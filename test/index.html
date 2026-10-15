@@ -328,6 +328,7 @@ const el = (tag, attrs = {}, ...kids) => {
   for (const k of kids.flat(Infinity)) if (k != null && k !== false) n.append(k.nodeType ? k : document.createTextNode(k));
   return n;
 };
+const put = (node, ...kids) => node.replaceChildren(...kids.flat(Infinity).filter(k => k != null && k !== false));
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
@@ -606,7 +607,7 @@ function renderAreas() {
     if (s.items.length) {
       const holder = el("div");
       const sorted = [...s.items].sort((x, y) => y.level - x.level || x.name.localeCompare(y.name, "de"));
-      const show = id => holder.replaceChildren(bulletinDetail(id));
+      const show = id => put(holder, bulletinDetail(id));
       const pick = s.items.length > 1 ? el("label", { class: "region-pick" }, "Teilgebiet",
         el("select", { onchange: e => show(e.target.value) }, sorted.map(i => el("option", { value: i.id, text: `${i.name} · Stufe ${i.level}` })))) : null;
       const det = el("details", {}, el("summary", { text: "Vollständiger Lagebericht" }), pick, holder);
@@ -667,7 +668,7 @@ function renderPowder() {
   const alerts = AREAS.map(a => ({ a, sn: snowFor(a), s: areaSummary(a) })).filter(x => x.sn && (x.sn.past >= state.threshold || x.sn.next >= state.threshold));
   if (!alerts.length) { box.hidden = true; box.replaceChildren(); return; }
   box.hidden = false; box.className = "powder";
-  box.replaceChildren(el("h2", { text: "Powderalert" }),
+  put(box, el("h2", { text: "Powderalert" }),
     ...alerts.map(({ a, sn, s }) => {
       const tours = state.tours.filter(t => regionArea(t.region) === a.key);
       const lvl = s.level, notes = [];
@@ -695,7 +696,7 @@ const WMO = c => c == null ? "" : c === 0 ? "klar" : c <= 2 ? "heiter" : c === 3
   : c <= 67 ? "Regen" : c <= 77 ? "Schnee" : c <= 82 ? "Regenschauer" : c <= 86 ? "Schneeschauer" : "Gewitter";
 function dayForecast(w, date) {
   const h = w.hourly, idx = h.time.map((ts, i) => [ts, i]).filter(([ts]) => ts.startsWith(date)).map(([, i]) => i);
-  if (!idx.length) return el("p", { class: "status", text: "Keine Stundenwerte für diesen Tag." });
+  if (!idx.length) return [el("p", { class: "status", text: "Keine Stundenwerte für diesen Tag." })];
   const v = (k, i) => h[k] ? h[k][i] : null;
   const dIdx = w.daily.time.indexOf(date), d = k => dIdx >= 0 && w.daily[k] ? w.daily[k][dIdx] : null;
   const fl = idx.map(i => v("freezing_level_height", i)).filter(x => x != null);
@@ -754,7 +755,7 @@ function stationBlock(t, stations) {
   const draw = () => {
     const sel = near.find(s => s.id === state.stationSel[t.id]) || near[0], p = sel.p;
     const val = (k, label, unit, d = 0) => p[k] == null ? null : el("div", { class: "kpi" }, el("div", { class: "k", text: label }), el("div", { class: "v", text: `${num(p[k], d)} ${unit}` }));
-    box.replaceChildren(
+    put(box, 
       el("h3", { text: "Nächste Messstation" }),
       el("div", { class: "stationlist", role: "group", "aria-label": "Messstation wählen" }, near.map(s =>
         el("button", { type: "button", "aria-pressed": String(s === sel), onclick: () => { state.stationSel[t.id] = s.id; draw(); },
@@ -781,8 +782,8 @@ function stationBlock(t, stations) {
 }
 async function renderTourDetail() {
   const sel = $("#tour-sel"), box = $("#tour-detail");
-  sel.replaceChildren(...state.tours.map(t => el("option", { value: t.id, text: t.name })));
-  if (!state.tours.length) { box.replaceChildren(el("p", { class: "status", text: "Noch keine Touren gespeichert." })); return; }
+  put(sel, ...state.tours.map(t => el("option", { value: t.id, text: t.name })));
+  if (!state.tours.length) { put(box, el("p", { class: "status", text: "Noch keine Touren gespeichert." })); return; }
   const t = state.tours.find(x => x.id === state.tourSel) || state.tours[0];
   sel.value = t.id;
   const ev = evaluateTour(t), date = state.date;
@@ -791,7 +792,7 @@ async function renderTourDetail() {
   const bul = state.regions.get(t.region)
     ? el("details", { class: "panel" }, el("summary", { text: `Vollständiger Lagebericht: ${regionName(t.region)}` }), bulletinDetail(t.region))
     : null;
-  box.replaceChildren(el("div", { class: "areas" },
+  put(box, el("div", { class: "areas" },
     el("div", { class: "tour" },
       el("div", { class: "top" }, levelDot(ev.level), el("span", { class: "name", text: t.name }), tourBadge(ev),
         t.example ? el("span", { class: "badge", text: "Beispiel, Angaben prüfen" }) : null),
@@ -801,22 +802,22 @@ async function renderTourDetail() {
   if (t.lat == null) {
     const msg = el("div", { class: "note warn" }, "Für diese Tour fehlen die Koordinaten. ",
       el("button", { class: "btn ghost", type: "button", onclick: () => editTour(t.id), text: "Jetzt eintragen" }));
-    wxBox.replaceChildren(el("h3", { text: "Wetter auf dem Gipfel" }), msg); stBox.replaceChildren(); return;
+    put(wxBox, el("h3", { text: "Wetter auf dem Gipfel" }), msg); stBox.replaceChildren(); return;
   }
   const token = `${t.id}|${date}`; renderTourDetail.token = token;
   const [w, st] = await Promise.allSettled([tourWeather(t, date), loadStations()]);
   if (renderTourDetail.token !== token) return;
   if (w.status === "fulfilled") {
-    wxBox.replaceChildren(
+    put(wxBox, 
       el("h3", { text: `Wetter auf dem Gipfel · ${fmtDate(date)}` }),
       el("p", { class: "status", text: `Modelldaten von Open-Meteo für ${t.top} m, keine Messwerte. Wind in 10 m über Grund, Richtung = woher der Wind kommt.` }),
-      dayForecast(w.value, date),
+      ...dayForecast(w.value, date),
       el("h3", { text: "Die 7 Tage davor" }),
       weekTable(w.value, date));
   } else {
-    wxBox.replaceChildren(el("h3", { text: "Wetter auf dem Gipfel" }), el("p", { class: "status", text: "Wetter konnte nicht geladen werden." }));
+    put(wxBox, el("h3", { text: "Wetter auf dem Gipfel" }), el("p", { class: "status", text: "Wetter konnte nicht geladen werden." }));
   }
-  stBox.replaceChildren(stationBlock(t, st.status === "fulfilled" ? st.value : []));
+  put(stBox, stationBlock(t, st.status === "fulfilled" ? st.value : []));
 }
 function showTour(id) {
   state.tourSel = id; store.set("lawinenapp.toursel.v1", id);
@@ -832,12 +833,12 @@ function renderStatus() {
     return `${p.name}: ${fmtDate(f.date)}`;
   });
   const none = PROVIDERS.every(p => !(state.fetched[p.id] && state.fetched[p.id].ok));
-  $("#status").replaceChildren(el("b", { text: fmtDate(state.date) }), " · Lageberichte " + parts.join(", ") +
+  put($("#status"), el("b", { text: fmtDate(state.date) }), " · Lageberichte " + parts.join(", ") +
     (state.weather ? "" : " · Wetter nicht geladen"),
     none ? el("div", { class: "note", style: "margin-top:8px" },
       "Für dieses Datum gibt es keine Lageberichte, die Saison beginnt etwa Ende November. Zum Ausprobieren Tage aus dem letzten Winter: ",
       el("button", { class: "btn ghost", type: "button", onclick: () => setDate("2026-02-22"), text: "22.02.2026 (Stufe 4)" }), " ",
-      el("button", { class: "btn ghost", type: "button", onclick: () => setDate("2026-01-15"), text: "15.01.2026 (Stufe 3)" })) : null);
+      el("button", { class: "btn ghost", type: "button", onclick: () => setDate("2026-01-15"), text: "15.01.2026 (Stufe 3)" })) : "");
 }
 function fillRegionSelect() {
   const sel = $("#t-region"), cur = sel.value; sel.replaceChildren();
