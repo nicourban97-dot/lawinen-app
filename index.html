@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Lawinen-App">
+<meta name="theme-color" content="#14202b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>Lawinen-App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: one column of area cards under a sticky control bar; powder alert first, tours last. */
+:root {
+  --bg: #eef2f4;
+  --surface: #ffffff;
+  --line: #d3dde3;
+  --fg: #14202b;
+  --muted: #5a6b78;
+  --accent: #1f5f8b;
+  --accent-ink: #ffffff;
+  --powder: #e6f1fb;
+  --powder-line: #8fb9dd;
+  --warn-bg: #fff4e0;
+  --warn-line: #e39a2c;
+  --stop-bg: #fde8e6;
+  --stop-line: #c8372d;
+  --l1: #ccff66; --l2: #ffff00; --l3: #ff9900; --l4: #ff0000; --l5: #a30000; --l0: #c9d1d6;
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f171e; --surface: #17222c; --line: #2a3a47; --fg: #e4ebf0; --muted: #9aabb8;
+    --accent: #6fb1e0; --accent-ink: #0f171e; --powder: #13293b; --powder-line: #2f6a96;
+    --warn-bg: #33270f; --warn-line: #c98a2a; --stop-bg: #3a1714; --stop-line: #e0574c; --l0: #3a4852;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg); font: 15px/1.5 var(--font-body);
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.wrap { max-width: 860px; margin: 0 auto; padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); }
+header.bar {
+  position: sticky; top: 0; z-index: 5; background: var(--fg); color: var(--bg);
+  padding-top: env(safe-area-inset-top, 0px);
+}
+header.bar .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding-block: 10px; }
+h1 { font: 700 26px/1 var(--font-display); letter-spacing: .02em; margin: 0; text-transform: uppercase; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-left: auto; }
+.seg { display: inline-flex; border: 1px solid color-mix(in srgb, var(--bg) 40%, transparent); border-radius: 6px; overflow: hidden; }
+.seg button { background: transparent; color: inherit; border: 0; padding: 6px 12px; font: 500 14px var(--font-body); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--bg); color: var(--fg); }
+input[type=date], select, input[type=text], input[type=number] {
+  font: 14px var(--font-body); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--fg);
+}
+header input[type=date] { border-color: transparent; }
+button.btn { font: 600 14px var(--font-body); padding: 7px 12px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+button.ghost { background: transparent; color: var(--accent); }
+button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+main { display: grid; gap: 18px; padding-block: 18px 40px; }
+.status { color: var(--muted); font-size: 13px; }
+.status b { color: var(--fg); font-weight: 600; }
+h2 { font: 700 22px/1.1 var(--font-display); text-transform: uppercase; letter-spacing: .03em; margin: 8px 0 0; }
+.note { border-left: 4px solid var(--line); padding: 8px 12px; background: var(--surface); border-radius: 0 6px 6px 0; }
+.note.warn { border-color: var(--warn-line); background: var(--warn-bg); }
+.note.stop { border-color: var(--stop-line); background: var(--stop-bg); }
+
+/* Powder alert */
+.powder { background: var(--powder); border: 1px solid var(--powder-line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 10px; }
+.powder h2 { margin: 0; }
+.powder .area { display: grid; gap: 6px; padding-top: 10px; border-top: 1px solid var(--powder-line); }
+.powder .area:first-of-type { border-top: 0; padding-top: 0; }
+
+/* Area cards */
+.areas { display: grid; gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; display: grid; grid-template-columns: 64px minmax(0,1fr); overflow: hidden; }
+.lvl { display: grid; place-items: center; align-content: center; gap: 2px; color: #111; font-family: var(--font-display); }
+.lvl .n { font-size: 40px; font-weight: 700; line-height: 1; }
+.lvl .t { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; text-align: center; padding: 0 4px; }
+.lvl.l0 { background: var(--l0); color: var(--fg); } .lvl.l1 { background: var(--l1); } .lvl.l2 { background: var(--l2); }
+.lvl.l3 { background: var(--l3); } .lvl.l4 { background: var(--l4); color: #fff; }
+.lvl.l5 { background: repeating-linear-gradient(45deg, var(--l4) 0 8px, #111 8px 16px); color: #fff; }
+.body { padding: 12px 14px; display: grid; gap: 8px; min-width: 0; }
+.head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.head h3 { font: 700 20px/1.1 var(--font-display); margin: 0; text-transform: uppercase; letter-spacing: .02em; }
+.head .elev { color: var(--muted); font-size: 13px; }
+.hl { margin: 0; }
+.snow { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--muted); }
+.snow b { font: 500 15px var(--font-mono); color: var(--fg); font-variant-numeric: tabular-nums; }
+.problems { display: flex; flex-wrap: wrap; gap: 8px; }
+.prob { display: flex; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px 4px 4px; font-size: 13px; }
+.prob svg { width: 40px; height: 40px; flex: none; }
+.prob .pt { font-weight: 600; }
+.prob .pe { color: var(--muted); }
+details summary { cursor: pointer; color: var(--accent); font-size: 13px; }
+.regions { display: grid; gap: 4px; margin-top: 6px; font-size: 13px; }
+.regions div { display: flex; gap: 8px; align-items: center; }
+.dot { width: 22px; height: 18px; border-radius: 3px; display: inline-grid; place-items: center; font: 700 12px var(--font-mono); color: #111; flex: none; }
+.dot.l4, .dot.l5 { color: #fff; }
+.dot.l0 { background: var(--l0); color: var(--fg); } .dot.l1 { background: var(--l1); } .dot.l2 { background: var(--l2); }
+.dot.l3 { background: var(--l3); } .dot.l4 { background: var(--l4); } .dot.l5 { background: var(--l5); }
+.badge { font: 600 12px var(--font-body); padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); }
+.badge.warn { background: var(--warn-bg); border-color: var(--warn-line); }
+.badge.stop { background: var(--stop-bg); border-color: var(--stop-line); }
+
+/* Tours */
+.tours { display: grid; gap: 8px; }
+.tour { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: grid; gap: 4px; }
+.tour .top { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.tour .name { font-weight: 600; }
+.tour .meta { color: var(--muted); font-size: 13px; }
+.tour ul { margin: 2px 0 0; padding-left: 18px; font-size: 13px; }
+.tour .del { margin-left: auto; font-size: 13px; padding: 2px 8px; }
+form.add { display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+form.add .row { display: flex; flex-wrap: wrap; gap: 10px; }
+form.add label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.aspects { display: flex; flex-wrap: wrap; gap: 6px; }
+.aspects label { display: flex; gap: 4px; align-items: center; color: var(--fg); font: 500 13px var(--font-mono); }
+footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+footer a { color: var(--accent); }
+@media (max-width: 520px) { .card { grid-template-columns: 52px minmax(0,1fr); } .lvl .n { font-size: 32px; } .lvl .t { display: none; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="wrap">
+    <h1>Lawinen-App</h1>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Tag">
+        <button type="button" id="btn-today" aria-pressed="true">Heute</button>
+        <button type="button" id="btn-tomorrow" aria-pressed="false">Morgen</button>
+      </div>
+      <input type="date" id="date" aria-label="Datum wählen">
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+<main>
+  <div class="status" id="status">Lade Lageberichte und Wetter …</div>
+  <section id="powder" hidden></section>
+  <section>
+    <h2>Lawinenlage</h2>
+    <div class="areas" id="areas"></div>
+  </section>
+  <section>
+    <h2>Meine Touren</h2>
+    <p class="status">Die App schlägt Touren nur vor, wenn ein aktueller Lagebericht vorliegt. Ab Stufe 3 gibt es eine Warnung, ab Stufe 4 keine Vorschläge im betroffenen Gebiet.</p>
+    <div class="tours" id="tours"></div>
+    <details id="add-wrap">
+      <summary>Tour hinzufügen</summary>
+      <form class="add" id="add-form">
+        <div class="row">
+          <label>Name<input type="text" id="t-name" required placeholder="z. B. Ponten"></label>
+          <label>Gebiet im Lagebericht<select id="t-region"></select></label>
+          <label>Gipfelhöhe (m)<input type="number" id="t-top" min="500" max="4800" step="1" required></label>
+          <label>Steilste Stelle<select id="t-steep">
+            <option value="1">unter 30°</option><option value="2">30–35°</option>
+            <option value="3">35–40°</option><option value="4">über 40°</option></select></label>
+        </div>
+        <div><div class="status">Expositionen der steilen Hänge</div>
+          <div class="aspects" id="t-aspects"></div></div>
+        <div><button class="btn" type="submit">Tour speichern</button></div>
+      </form>
+    </details>
+  </section>
+  <section>
+    <h2>Einstellungen</h2>
+    <form class="add" id="settings">
+      <div class="row">
+        <label>Powderalert ab Neuschnee (cm in 24 h)<input type="number" id="s-thr" min="5" max="100" step="5"></label>
+      </div>
+    </form>
+  </section>
+  <footer>
+    Lageberichte: <a href="https://www.lawinenwarndienst.bayern.de" target="_blank" rel="noopener">Lawinenwarndienst Bayern</a>,
+    <a href="https://avalanche.report" target="_blank" rel="noopener">Lawinenwarndienst Tirol (avalanche.report)</a>,
+    <a href="https://www.vorarlberg.at/lawinenbericht" target="_blank" rel="noopener">Lawinenwarndienst Vorarlberg</a>.
+    Wetter: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (nicht-kommerzielle Nutzung).
+    Diese App ist eine Entscheidungshilfe. Sie ersetzt nicht den vollständigen Lagebericht und nicht die Beurteilung im Gelände. Version 0.1.1.
+  </footer>
+</main>
+</div>
+
+<script>
+"use strict";
+const LEVELS = { no_snow: 0, no_rating: 0, low: 1, moderate: 2, considerable: 3, high: 4, very_high: 5 };
+const LEVEL_NAME = ["keine Angabe", "gering", "mäßig", "erheblich", "groß", "sehr groß"];
+const PROBLEM = {
+  new_snow: "Neuschnee", wind_slab: "Triebschnee", persistent_weak_layers: "Altschnee",
+  wet_snow: "Nassschnee", gliding_snow: "Gleitschnee", cornices: "Wechten",
+  favourable_situation: "Günstige Situation", no_distinct_avalanche_problem: "Kein ausgeprägtes Problem"
+};
+const ASPECTS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+const ASPECT_DE = { N: "N", NE: "NO", E: "O", SE: "SO", S: "S", SW: "SW", W: "W", NW: "NW" };
+
+const PROVIDERS = [
+  { id: "BY", url: d => `https://static.lawinen-warnung.eu/bulletins/${d}/${d}_DE-BY_de_CAAMLv6.json` },
+  { id: "VB", url: d => `https://static.lawinen-warnung.eu/bulletins/${d}/${d}_AT-08_de_CAAMLv6.json` },
+  { id: "TI", url: d => `https://static.avalanche.report/bulletins/${d}/${d}_EUREGIO_de_CAAMLv6.json` }
+];
+
+// Areas of the first version. Regions are the micro-regions of the warning services.
+const AREAS = [
+  { key: "allgaeu", name: "Allgäu", regions: ["DE-BY-11", "DE-BY-12"],
+    points: [{ lat: 47.40, lon: 10.33, elev: 1800, label: "Oberstdorf" }, { lat: 47.48, lon: 10.10, elev: 1600, label: "Balderschwang" }] },
+  { key: "tannheim", name: "Tannheimer Tal", regions: ["AT-07-01"],
+    points: [{ lat: 47.50, lon: 10.55, elev: 1700, label: "Tannheim" }] },
+  { key: "kleinwalsertal", name: "Kleinwalsertal", regions: ["AT-08-02"],
+    points: [{ lat: 47.33, lon: 10.15, elev: 1800, label: "Mittelberg" }] },
+  { key: "lechtal", name: "Lechtal", regions: ["AT-07-07", "AT-07-08", "AT-07-02-02"],
+    points: [{ lat: 47.26, lon: 10.34, elev: 2000, label: "Holzgau" }] },
+  { key: "tirol", name: "Tirol", regions: "AT-07-*",
+    points: [{ lat: 47.13, lon: 10.27, elev: 2200, label: "Arlberg" }, { lat: 47.21, lon: 11.02, elev: 2200, label: "Kühtai" },
+             { lat: 47.10, lon: 11.30, elev: 2200, label: "Stubai" }, { lat: 47.11, lon: 11.68, elev: 2200, label: "Tux" },
+             { lat: 47.43, lon: 12.39, elev: 1700, label: "Kitzbühel" }] }
+];
+const OWN_TIROL = new Set(["AT-07-01", "AT-07-07", "AT-07-08", "AT-07-02-02"]);
+const STATIC_REGION_NAMES = {
+  "DE-BY-11": "Allgäuer Voralpen", "DE-BY-12": "Allgäuer Alpen Mitte", "AT-07-01": "Allgäuer Alpen Ost (Tannheimer Tal)",
+  "AT-08-02": "Allgäuer Alpen West (Kleinwalsertal)", "AT-07-07": "Lechtaler Alpen West", "AT-07-08": "Lechtaler Alpen Mitte",
+  "AT-07-02-02": "Lechtaler Alpen Ost"
+};
+
+const EXAMPLE_TOURS = [
+  { id: "ex1", name: "Riedberger Horn", region: "DE-BY-11", top: 1787, steep: 2, aspects: [], example: true },
+  { id: "ex2", name: "Ponten", region: "AT-07-01", top: 2045, steep: 2, aspects: [], example: true },
+  { id: "ex3", name: "Hählekopf", region: "AT-08-02", top: 2058, steep: 2, aspects: [], example: true },
+  { id: "ex4", name: "Pirchkogel", region: "AT-07-14-02", top: 2828, steep: 3, aspects: [], example: true }
+];
+
+// ---------- small helpers ----------
+const $ = s => document.querySelector(s);
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") n.className = v; else if (k === "text") n.textContent = v;
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v); else n.setAttribute(k, v);
+  }
+  for (const k of kids.flat()) if (k != null) n.append(k.nodeType ? k : document.createTextNode(k));
+  return n;
+};
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const addDays = (s, n) => { const d = new Date(s + "T12:00:00"); d.setDate(d.getDate() + n); return ymd(d); };
+const fmtDate = s => new Date(s + "T12:00:00").toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" });
+const elevText = e => {
+  if (!e) return "alle Höhen";
+  const f = v => v === "treeline" ? "Waldgrenze" : `${v} m`;
+  if (e.lowerBound && e.upperBound) return `${f(e.lowerBound)} – ${f(e.upperBound)}`;
+  if (e.lowerBound) return `über ${f(e.lowerBound)}`;
+  if (e.upperBound) return `unter ${f(e.upperBound)}`;
+  return "alle Höhen";
+};
+
+// ---------- state ----------
+const state = {
+  date: ymd(new Date()),
+  regions: new Map(),   // regionID -> {name, bulletin, provider, stale}
+  fetched: {},          // provider -> {date, ok}
+  weather: null,
+  tours: store.get("lawinenapp.tours.v1", EXAMPLE_TOURS),
+  threshold: store.get("lawinenapp.threshold.v1", 20)
+};
+
+// ---------- data ----------
+async function getJSON(url) {
+  const r = await fetch(url, { cache: "no-store" });
+  if (!r.ok) throw new Error(String(r.status));
+  return r.json();
+}
+async function loadBulletins(date) {
+  state.regions = new Map(); state.fetched = {};
+  const live = date >= ymd(new Date());
+  await Promise.all(PROVIDERS.map(async p => {
+    // For today/tomorrow fall back to the two previous days, a bulletin keeps its validity until the next one.
+    const tries = live ? [date, addDays(date, -1), addDays(date, -2)] : [date];
+    for (const d of tries) {
+      try {
+        const j = await getJSON(p.url(d));
+        for (const b of j.bulletins || []) for (const r of b.regions || [])
+          state.regions.set(r.regionID, { name: r.name, bulletin: b, provider: p.id, stale: d !== date, file: d });
+        state.fetched[p.id] = { date: d, ok: true };
+        return;
+      } catch (e) { /* try next */ }
+    }
+    state.fetched[p.id] = { ok: false };
+  }));
+}
+async function loadWeather(date) {
+  const pts = AREAS.flatMap(a => a.points.map(p => ({ ...p, area: a.key })));
+  const q = `latitude=${pts.map(p => p.lat).join(",")}&longitude=${pts.map(p => p.lon).join(",")}&elevation=${pts.map(p => p.elev).join(",")}&hourly=snowfall,temperature_2m&timezone=Europe%2FBerlin`;
+  const today = ymd(new Date());
+  const diff = (new Date(date + "T12:00:00") - new Date(today + "T12:00:00")) / 864e5;
+  let url, ref;
+  if (diff >= -1) {
+    url = `https://api.open-meteo.com/v1/forecast?${q}&past_days=2&forecast_days=4`;
+    ref = diff <= 0 ? new Date() : new Date(date + "T08:00:00");
+  } else {
+    url = `https://historical-forecast-api.open-meteo.com/v1/forecast?${q}&start_date=${addDays(date, -2)}&end_date=${addDays(date, 1)}`;
+    ref = new Date(date + "T08:00:00");
+  }
+  const res = await getJSON(url);
+  const arr = Array.isArray(res) ? res : [res];
+  const refMs = ref.getTime();
+  return pts.map((p, i) => {
+    const h = arr[i].hourly; let past = 0, next = 0, t = null, best = Infinity;
+    h.time.forEach((ts, k) => {
+      const ms = new Date(ts).getTime(), dh = (ms - refMs) / 36e5, s = h.snowfall[k] || 0;
+      if (dh > -24 && dh <= 0) past += s;
+      if (dh > 0 && dh <= 24) next += s;
+      if (Math.abs(dh) < best) { best = Math.abs(dh); t = h.temperature_2m[k]; }
+    });
+    return { ...p, past, next, temp: t };
+  });
+}
+
+// ---------- logic ----------
+const maxLevel = b => b ? Math.max(0, ...(b.dangerRatings || []).map(r => LEVELS[r.mainValue] ?? 0)) : null;
+function areaRegions(a) {
+  if (a.regions === "AT-07-*") return [...state.regions.keys()].filter(id => id.startsWith("AT-07-") && !OWN_TIROL.has(id)).sort();
+  return a.regions.filter(id => state.regions.has(id));
+}
+function areaSummary(a) {
+  const ids = areaRegions(a);
+  const items = ids.map(id => ({ id, ...state.regions.get(id), level: maxLevel(state.regions.get(id).bulletin) }));
+  const level = items.length ? Math.max(...items.map(i => i.level)) : null;
+  const worst = items.find(i => i.level === level);
+  return { items, level, worst };
+}
+function problemHits(tour, bulletin) {
+  return (bulletin.avalancheProblems || []).filter(p => {
+    if (!tour.aspects.length) return false;
+    const asp = p.aspects || ASPECTS;
+    if (!tour.aspects.some(x => asp.includes(x))) return false;
+    const lb = p.elevation && p.elevation.lowerBound;
+    // Treeline has no fixed height: count it as a hit to stay on the cautious side.
+    return !lb || lb === "treeline" || tour.top >= Number(lb);
+  });
+}
+function evaluateTour(t) {
+  const r = state.regions.get(t.region);
+  if (!r) return { status: "none", level: null, notes: ["Für dieses Gebiet liegt kein Lagebericht vor."] };
+  const level = maxLevel(r.bulletin), notes = [];
+  if (r.stale) notes.push(`Lagebericht vom ${fmtDate(r.file)}, noch kein neuerer veröffentlicht.`);
+  if (level >= 4) return { status: "stop", level, notes: [`Stufe ${level} (${LEVEL_NAME[level]}) in ${r.name}: keine Tourenvorschläge in diesem Gebiet.`, ...notes] };
+  const hits = problemHits(t, r.bulletin);
+  if (level === 3) {
+    if (!t.aspects.length) notes.push("Expositionen der Tour sind nicht eingetragen. Gefahrenstellen laut Bericht selbst prüfen.");
+    for (const h of hits) notes.push(`${PROBLEM[h.problemType] || h.problemType}: Tour berührt laut Bericht gefährdete Expositionen (${elevText(h.elevation)}).`);
+    if (t.steep >= 3) notes.push("Faustregel bei Stufe 3: Hänge steiler als 35° meiden.");
+    return { status: "warn", level, notes };
+  }
+  for (const h of hits) notes.push(`${PROBLEM[h.problemType] || h.problemType}: Gefahrenstellen in Expositionen dieser Tour (${elevText(h.elevation)}).`);
+  if (level === 2 && t.steep >= 4) notes.push("Faustregel bei Stufe 2: Hänge steiler als 40° meiden.");
+  return { status: "go", level, notes };
+}
+
+// ---------- rendering ----------
+function rose(aspects) {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "-22 -22 44 44"); svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", "Expositionen: " + (aspects || []).map(a => ASPECT_DE[a]).join(", "));
+  ASPECTS.forEach((a, i) => {
+    const a0 = (i * 45 - 22.5 - 90) * Math.PI / 180, a1 = (i * 45 + 22.5 - 90) * Math.PI / 180, R = 20;
+    const p = document.createElementNS(ns, "path");
+    p.setAttribute("d", `M0 0 L${(R * Math.cos(a0)).toFixed(2)} ${(R * Math.sin(a0)).toFixed(2)} A${R} ${R} 0 0 1 ${(R * Math.cos(a1)).toFixed(2)} ${(R * Math.sin(a1)).toFixed(2)} Z`);
+    const on = (aspects || []).includes(a);
+    p.setAttribute("fill", on ? "var(--fg)" : "var(--surface)");
+    p.setAttribute("stroke", "var(--muted)"); p.setAttribute("stroke-width", "0.8");
+    svg.append(p);
+  });
+  const t = document.createElementNS(ns, "text");
+  t.setAttribute("x", "0"); t.setAttribute("y", "-14.5"); t.setAttribute("text-anchor", "middle");
+  t.setAttribute("font-size", "7"); t.setAttribute("font-weight", "700"); t.setAttribute("fill", "var(--accent)"); t.textContent = "N";
+  svg.append(t);
+  return svg;
+}
+const lvlClass = l => "l" + (l == null ? 0 : l);
+function snowFor(a) {
+  if (!state.weather) return null;
+  const pts = state.weather.filter(p => p.area === a.key);
+  return { past: Math.max(...pts.map(p => p.past)), next: Math.max(...pts.map(p => p.next)), pts };
+}
+function renderAreas() {
+  const box = $("#areas"); box.replaceChildren();
+  for (const a of AREAS) {
+    const s = areaSummary(a), sn = snowFor(a), b = s.worst && s.worst.bulletin;
+    const elev = b ? (b.dangerRatings || []).map(r => `${LEVELS[r.mainValue] ?? "–"} ${elevText(r.elevation)}`).join(" · ") : "";
+    const body = el("div", { class: "body" },
+      el("div", { class: "head" }, el("h3", { text: a.name }), el("span", { class: "elev", text: elev })),
+      b ? el("p", { class: "hl", text: (b.avalancheActivity && b.avalancheActivity.highlights) || b.highlights || "" })
+        : el("p", { class: "hl", text: "Kein Lagebericht für dieses Datum gefunden. Außerhalb der Saison erscheinen keine Berichte." }),
+      sn ? el("div", { class: "snow" },
+        el("span", {}, "Neuschnee letzte 24 h ", el("b", { text: sn.past.toFixed(0) + " cm" })),
+        el("span", {}, "nächste 24 h ", el("b", { text: sn.next.toFixed(0) + " cm" })),
+        el("span", { text: "auf " + sn.pts.map(p => `${p.label} ${p.elev} m`).join(", ") })) : null,
+      b ? el("div", { class: "problems" }, (b.avalancheProblems || []).map(p =>
+        el("div", { class: "prob" }, rose(p.aspects), el("div", {},
+          el("div", { class: "pt", text: PROBLEM[p.problemType] || p.problemType }),
+          el("div", { class: "pe", text: elevText(p.elevation) }))))) : null,
+      s.items.length > 1 ? el("details", {}, el("summary", { text: `${s.items.length} Teilgebiete anzeigen` }),
+        el("div", { class: "regions" }, s.items.map(i => el("div", {}, el("span", { class: "dot " + lvlClass(i.level), text: i.level ?? "–" }), i.name + (i.stale ? " (älterer Bericht)" : ""))))) : null
+    );
+    box.append(el("article", { class: "card" },
+      el("div", { class: "lvl " + lvlClass(s.level), "aria-label": s.level ? `Gefahrenstufe ${s.level}` : "keine Angabe" },
+        el("span", { class: "n", text: s.level ?? "–" }), el("span", { class: "t", text: LEVEL_NAME[s.level ?? 0] })),
+      body));
+  }
+}
+function tourNode(t, withDelete) {
+  const ev = evaluateTour(t), r = state.regions.get(t.region);
+  const badge = ev.status === "stop" ? el("span", { class: "badge stop", text: "Kein Vorschlag" })
+    : ev.status === "warn" ? el("span", { class: "badge warn", text: "Warnung Stufe 3" })
+    : ev.status === "go" ? el("span", { class: "badge", text: "Lage prüfen" })
+    : el("span", { class: "badge", text: "Kein Bericht" });
+  const node = el("div", { class: "tour" },
+    el("div", { class: "top" },
+      el("span", { class: "dot " + lvlClass(ev.level), text: ev.level ?? "–" }),
+      el("span", { class: "name", text: t.name }), badge,
+      t.example ? el("span", { class: "badge", text: "Beispiel, Angaben prüfen" }) : null,
+      withDelete ? el("button", { class: "btn ghost del", type: "button", onclick: () => removeTour(t.id), text: "Löschen" }) : null),
+    el("div", { class: "meta", text: `${r ? r.name : (STATIC_REGION_NAMES[t.region] || t.region)} · Gipfel ${t.top} m · Expositionen: ${t.aspects.length ? t.aspects.map(a => ASPECT_DE[a]).join(", ") : "nicht eingetragen"}` }),
+    ev.notes.length ? el("ul", {}, ev.notes.map(n => el("li", { text: n }))) : null);
+  return node;
+}
+function renderTours() {
+  const box = $("#tours"); box.replaceChildren();
+  if (!state.tours.length) box.append(el("p", { class: "status", text: "Noch keine Touren gespeichert." }));
+  for (const t of state.tours) box.append(tourNode(t, true));
+}
+function renderPowder() {
+  const box = $("#powder");
+  const alerts = AREAS.map(a => ({ a, sn: snowFor(a), s: areaSummary(a) })).filter(x => x.sn && (x.sn.past >= state.threshold || x.sn.next >= state.threshold));
+  if (!alerts.length) { box.hidden = true; box.replaceChildren(); return; }
+  box.hidden = false; box.className = "powder";
+  box.replaceChildren(el("h2", { text: "Powderalert" }),
+    ...alerts.map(({ a, sn, s }) => {
+      const tours = state.tours.filter(t => regionArea(t.region) === a.key);
+      const lvl = s.level, notes = [];
+      const stopRegions = s.items.filter(i => i.level >= 4), warnRegions = s.items.filter(i => i.level === 3);
+      const names = list => list.length > 4 ? `${list.length} von ${s.items.length} Teilgebieten` : list.map(i => i.name).join(", ");
+      if (lvl == null) notes.push(el("div", { class: "note", text: "Kein Lagebericht verfügbar, deshalb keine Tourenvorschläge." }));
+      if (stopRegions.length) notes.push(el("div", { class: "note stop", text: stopRegions.length === s.items.length
+        ? `Stufe ${lvl} (${LEVEL_NAME[lvl]}) im ganzen Gebiet: keine Tourenvorschläge. Der Neuschnee erhöht die Gefahr zusätzlich.`
+        : `Stufe 4 oder höher in ${names(stopRegions)}: dort keine Tourenvorschläge.` }));
+      if (warnRegions.length) notes.push(el("div", { class: "note warn", text: `Stufe 3 (erheblich) in ${names(warnRegions)}: Die meisten Lawinenunfälle passieren bei dieser Stufe. Gefahrenstellen laut Bericht meiden.` }));
+      // Each tour is judged by the level of its own micro-region.
+      const show = lvl == null ? [] : tours.filter(t => ["go", "warn"].includes(evaluateTour(t).status))
+        .sort((x, y) => (evaluateTour(x).level ?? 9) - (evaluateTour(y).level ?? 9));
+      const anyOpen = s.items.some(i => i.level < 4);
+      return el("div", { class: "area" },
+        el("div", {}, el("b", { text: a.name }), ` · ${sn.past.toFixed(0)} cm in den letzten 24 h, ${sn.next.toFixed(0)} cm in den nächsten 24 h`),
+        ...notes,
+        show.length ? el("div", { class: "tours" }, show.map(t => tourNode(t, false)))
+          : (anyOpen ? el("div", { class: "status", text: "Keine eigene Tour in den offenen Teilgebieten gespeichert." }) : null));
+    }));
+}
+function regionArea(id) {
+  for (const a of AREAS) if (Array.isArray(a.regions) && a.regions.includes(id)) return a.key;
+  return id.startsWith("AT-07-") ? "tirol" : null;
+}
+function renderStatus() {
+  const parts = PROVIDERS.map(p => {
+    const f = state.fetched[p.id], n = { BY: "Bayern", VB: "Vorarlberg", TI: "Tirol" }[p.id];
+    if (!f || !f.ok) return `${n}: kein Bericht`;
+    return `${n}: ${fmtDate(f.date)}`;
+  });
+  const none = PROVIDERS.every(p => !(state.fetched[p.id] && state.fetched[p.id].ok));
+  $("#status").replaceChildren(el("b", { text: fmtDate(state.date) }), " · Lageberichte " + parts.join(", ") +
+    (state.weather ? "" : " · Wetter nicht geladen"),
+    none ? el("div", { class: "note", style: "margin-top:8px" },
+      "Für dieses Datum gibt es keine Lageberichte, die Saison beginnt etwa Ende November. Zum Ausprobieren Tage aus dem letzten Winter: ",
+      el("button", { class: "btn ghost", type: "button", onclick: () => setDate("2026-02-22"), text: "22.02.2026 (Stufe 4)" }), " ",
+      el("button", { class: "btn ghost", type: "button", onclick: () => setDate("2026-01-15"), text: "15.01.2026 (Stufe 3)" })) : null);
+}
+function fillRegionSelect() {
+  const sel = $("#t-region"), cur = sel.value; sel.replaceChildren();
+  const ids = new Map(Object.entries(STATIC_REGION_NAMES));
+  for (const [id, r] of state.regions) if (id.startsWith("AT-07-") && !ids.has(id)) ids.set(id, r.name);
+  for (const [id, name] of [...ids].sort((a, b) => a[1].localeCompare(b[1], "de"))) sel.append(el("option", { value: id, text: `${name} (${id})` }));
+  if (cur) sel.value = cur;
+}
+function renderAll() { renderStatus(); renderAreas(); renderPowder(); renderTours(); fillRegionSelect(); }
+
+// ---------- actions ----------
+async function load() {
+  $("#status").textContent = "Lade Lageberichte und Wetter …";
+  const date = state.date;
+  const [, w] = await Promise.allSettled([loadBulletins(date), loadWeather(date)]);
+  if (date !== state.date) return;
+  state.weather = w.status === "fulfilled" ? w.value : null;
+  renderAll();
+}
+function setDate(d) {
+  state.date = d; $("#date").value = d;
+  const today = ymd(new Date());
+  $("#btn-today").setAttribute("aria-pressed", String(d === today));
+  $("#btn-tomorrow").setAttribute("aria-pressed", String(d === addDays(today, 1)));
+  load();
+}
+function removeTour(id) { state.tours = state.tours.filter(t => t.id !== id); store.set("lawinenapp.tours.v1", state.tours); renderTours(); renderPowder(); }
+
+$("#btn-today").addEventListener("click", () => setDate(ymd(new Date())));
+$("#btn-tomorrow").addEventListener("click", () => setDate(addDays(ymd(new Date()), 1)));
+$("#date").addEventListener("change", e => e.target.value && setDate(e.target.value));
+$("#t-aspects").append(...ASPECTS.map(a => el("label", {}, el("input", { type: "checkbox", value: a, id: "asp-" + a }), ASPECT_DE[a])));
+$("#add-form").addEventListener("submit", e => {
+  e.preventDefault();
+  const t = { id: "t" + Date.now(), name: $("#t-name").value.trim(), region: $("#t-region").value,
+    top: Number($("#t-top").value), steep: Number($("#t-steep").value),
+    aspects: [...document.querySelectorAll("#t-aspects input:checked")].map(i => i.value) };
+  if (!t.name || !t.top) return;
+  state.tours.push(t); store.set("lawinenapp.tours.v1", state.tours);
+  e.target.reset(); renderTours(); renderPowder();
+});
+$("#s-thr").value = state.threshold;
+$("#s-thr").addEventListener("change", e => { state.threshold = Number(e.target.value) || 20; store.set("lawinenapp.threshold.v1", state.threshold); renderPowder(); });
+$("#settings").addEventListener("submit", e => e.preventDefault());
+setDate(ymd(new Date()));
+</script>
+</body>
+</html>
