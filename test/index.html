@@ -173,7 +173,7 @@ form.add label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); 
 .aspects { display: flex; flex-wrap: wrap; gap: 6px; }
 .aspects label { display: flex; gap: 4px; align-items: center; color: var(--fg); font: 500 13px var(--font-mono); }
 footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
-@media (max-width: 520px) { .card { grid-template-columns: 52px minmax(0,1fr); } .lvl .n { font-size: 32px; } .lvl .t { display: none; } .pdetail { grid-template-columns: 44px minmax(0,1fr); } .pdetail svg { width: 44px; height: 44px; } }
+@media (max-width: 520px) { table.wx th, table.wx td { padding: 5px 5px; } .hide-sm { display: none; } .card { grid-template-columns: 52px minmax(0,1fr); } .lvl .n { font-size: 32px; } .lvl .t { display: none; } .pdetail { grid-template-columns: 44px minmax(0,1fr); } .pdetail svg { width: 44px; height: 44px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
@@ -713,16 +713,17 @@ function dayForecast(w, date) {
     const i = idx.find(k => Number(h.time[k].slice(11, 13)) === hour); if (i == null) continue;
     const pr = (v("precipitation", i) || 0) + (v("precipitation", i + 1) || 0), sn = (v("snowfall", i) || 0) + (v("snowfall", i + 1) || 0);
     rows.push(el("tr", {},
-      el("td", { text: `${String(hour).padStart(2, "0")} Uhr` }),
+      el("td", { text: `${String(hour).padStart(2, "0")}:00` }),
       el("td", { text: WMO(v("weather_code", i)) }),
       el("td", { text: `${num(v("temperature_2m", i))} °` }),
       el("td", {}, sn >= 0.5 ? el("span", { class: "sn", text: `${num(sn)} cm` }) : pr >= 0.1 ? `${num(pr, 1)} mm` : "–"),
       el("td", {}, wind(v("wind_speed_10m", i), v("wind_direction_10m", i), v("wind_gusts_10m", i))),
-      el("td", { text: `${num(v("cloud_cover", i))} %` }),
+      el("td", { class: "hide-sm", text: `${num(v("cloud_cover", i))} %` }),
       h.freezing_level_height ? el("td", { text: v("freezing_level_height", i) == null ? "–" : `${Math.round(v("freezing_level_height", i) / 50) * 50} m` }) : null));
   }
   const table = el("div", { class: "tablewrap" }, el("table", { class: "wx" },
-    el("thead", {}, el("tr", {}, ["Zeit", "Wetter", "Temp.", "Niederschl.", "Wind (Böen) km/h", "Wolken", h.freezing_level_height ? "0-Grad" : null].filter(Boolean).map(x => el("th", { text: x })))),
+    el("thead", {}, el("tr", {}, el("th", { text: "Zeit" }), el("th", { text: "Wetter" }), el("th", { text: "Temp." }), el("th", { text: "Nieders." }),
+      el("th", { text: "Wind (Böen)" }), el("th", { class: "hide-sm", text: "Wolken" }), h.freezing_level_height ? el("th", { text: "0-Grad" }) : null)),
     el("tbody", {}, rows)));
   return [kpis, table];
 }
@@ -733,16 +734,16 @@ function weekTable(w, date) {
     const sel = day === date;
     if (!sel) { sumP += D.precipitation_sum[i] || 0; sumS += D.snowfall_sum[i] || 0; }
     rows.push(el("tr", { class: sel ? "sel" : null },
-      el("td", { text: fmtDay(day) + (sel ? " (gewählt)" : "") }),
+      el("td", { text: fmtDay(day).replace(",", "") }),
       el("td", { text: `${num(D.precipitation_sum[i], 1)} mm` }),
       el("td", {}, (D.snowfall_sum[i] || 0) >= 0.5 ? el("span", { class: "sn", text: `${num(D.snowfall_sum[i])} cm` }) : "–"),
-      el("td", { text: `${num(D.temperature_2m_min[i])} / ${num(D.temperature_2m_max[i])} °` }),
+      el("td", { text: `${num(D.temperature_2m_min[i])} / ${num(D.temperature_2m_max[i])}°` }),
       el("td", {}, wind(D.wind_speed_10m_max[i], D.wind_direction_10m_dominant[i], D.wind_gusts_10m_max[i]))));
   });
-  rows.push(el("tr", { class: "sum" }, el("td", { text: "Summe 7 Tage" }), el("td", { text: `${num(sumP, 1)} mm` }),
+  rows.push(el("tr", { class: "sum" }, el("td", { text: "7 Tage" }), el("td", { text: `${num(sumP, 1)} mm` }),
     el("td", {}, el("span", { class: "sn", text: `${num(sumS)} cm` })), el("td"), el("td")));
   return el("div", { class: "tablewrap" }, el("table", { class: "wx" },
-    el("thead", {}, el("tr", {}, ["Tag", "Niederschl.", "Neuschnee", "Temp. min / max", "Wind max (Böen) km/h"].map(x => el("th", { text: x })))),
+    el("thead", {}, el("tr", {}, ["Tag", "Nieders.", "Neuschnee", "Temp. °C", "Wind max (Böen)"].map(x => el("th", { text: x })))),
     el("tbody", {}, rows)));
 }
 function stationBlock(t, stations) {
@@ -810,9 +811,10 @@ async function renderTourDetail() {
   if (w.status === "fulfilled") {
     put(wxBox, 
       el("h3", { text: `Wetter auf dem Gipfel · ${fmtDate(date)}` }),
-      el("p", { class: "status", text: `Modelldaten von Open-Meteo für ${t.top} m, keine Messwerte. Wind in 10 m über Grund, Richtung = woher der Wind kommt.` }),
+      el("p", { class: "status", text: `Modelldaten von Open-Meteo für ${t.top} m, keine Messwerte. Wind in km/h, 10 m über Grund. Die Buchstaben nennen, woher der Wind kommt, der Pfeil zeigt, wohin er weht.` }),
       ...dayForecast(w.value, date),
       el("h3", { text: "Die 7 Tage davor" }),
+      el("p", { class: "status", text: "Temperatur als min / max, die letzte Zeile ist der gewählte Tag. Die Summe zählt nur die 7 Tage davor." }),
       weekTable(w.value, date));
   } else {
     put(wxBox, el("h3", { text: "Wetter auf dem Gipfel" }), el("p", { class: "status", text: "Wetter konnte nicht geladen werden." }));
