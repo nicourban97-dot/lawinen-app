@@ -24,6 +24,14 @@ const r5 = v => Math.round(v * 1e5) / 1e5;
 // Douglas-Peucker, tolerance in degrees (5e-5 is about 4 to 5 m in the Alps).
 function simplify(pts, tol = 5e-5) {
   if (pts.length < 3) return pts;
+  const f = pts[0], l = pts[pts.length - 1];
+  if (f[0] === l[0] && f[1] === l[1]) {
+    // Closed ring: split at the point farthest from the start, otherwise every distance is measured to a single point.
+    let far = 1, best = -1;
+    for (let i = 1; i < pts.length - 1; i++) { const d = Math.hypot(pts[i][0] - f[0], pts[i][1] - f[1]); if (d > best) { best = d; far = i; } }
+    if (far <= 0 || far >= pts.length - 1) return pts;
+    return simplify(pts.slice(0, far + 1), tol).concat(simplify(pts.slice(far), tol).slice(1));
+  }
   const keepIdx = new Uint8Array(pts.length); keepIdx[0] = keepIdx[pts.length - 1] = 1;
   const stack = [[0, pts.length - 1]];
   while (stack.length) {
