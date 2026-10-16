@@ -76,7 +76,7 @@ header.top h1 { font: 700 28px/1 var(--font-display); margin: 0; letter-spacing:
 main { position: relative; overflow: hidden; }
 .page { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .page-inner { max-width: 760px; margin: 0 auto; padding: 14px max(16px, env(safe-area-inset-right, 0px)) 28px max(16px, env(safe-area-inset-left, 0px)); display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
-nav.tabbar { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--surface); border-top: 1px solid var(--line);
+nav.tabbar { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--surface); border-top: 1px solid var(--line);
   padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
 nav.tabbar button { height: var(--tab-h); border: 0; background: transparent; display: grid; place-items: center; align-content: center; gap: 2px; color: var(--muted); font-size: 12px; font-weight: 700; cursor: pointer; }
 nav.tabbar svg { width: 26px; height: 26px; }
@@ -200,6 +200,40 @@ details > summary { cursor: pointer; color: var(--accent); font-weight: 700; }
 .maplibregl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color: var(--surface); }
 .maplibregl-popup-close-button { color: var(--fg); font-size: 20px; padding: 0 6px; }
 .maplibregl-ctrl-bottom-right { margin-bottom: 6px; }
+.qbar { flex: 1 0 100%; display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; pointer-events: auto; padding: 2px 1px 4px; margin: 0 -1px; }
+.qbar::-webkit-scrollbar { display: none; }
+.qchip { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; padding: 7px 12px; border-radius: 99px; border: 0; background: var(--surface); color: var(--fg); box-shadow: var(--shadow); cursor: pointer; }
+.qchip[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.qchip .sw { margin: 0; }
+.risk-sw { width: 14px; height: 10px; }
+.acc-sw { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.35); }
+.tour-sw { width: 18px; height: 4px; border: 0; border-radius: 2px; background: #1767b0; box-shadow: 0 0 0 1.5px #fff; vertical-align: 2px; }
+.riskbox { display: grid; gap: 8px; border-radius: 12px; padding: 10px 12px; background: var(--surface-2); }
+.riskhead { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.rlevel { font: 700 19px/1.1 var(--font-display); padding: 3px 10px; border-radius: 8px; color: #111; }
+.rlevel.r0 { background: #d8efd2; } .rlevel.r1 { background: #ffe066; } .rlevel.r2 { background: #ff9f43; } .rlevel.r3 { background: #d7263d; color: #fff; }
+.sections { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.sections li { display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 8px; align-items: start; font-size: 14px; }
+.sections li i { width: 12px; height: 12px; border-radius: 3px; margin-top: 4px; }
+.accs { display: grid; gap: 4px; font-size: 14px; }
+.accs button { text-align: left; border: 0; background: transparent; color: var(--accent); padding: 2px 0; cursor: pointer; font-size: 14px; }
+/* Wetter page */
+.wxdays { display: grid; gap: 6px; }
+.wxday { display: grid; grid-template-columns: 64px 34px minmax(0, 1fr) auto; gap: 8px; align-items: center; background: var(--surface); border: 0; border-radius: 12px; padding: 8px 10px; text-align: left; cursor: pointer; box-shadow: var(--shadow); width: 100%; font-size: 14px; }
+.wxday[aria-pressed="true"] { outline: 2px solid var(--accent); }
+.wxday .dn { font: 700 18px/1.1 var(--font-display); }
+.wxday .ic { font-size: 26px; line-height: 1; text-align: center; }
+.wxday .mid { color: var(--muted); min-width: 0; }
+.wxday .mid b { color: var(--fg); }
+.wxday .tt { text-align: right; font-variant-numeric: tabular-nums; }
+.wxday .tt b { font-size: 17px; }
+.wxday .sn { color: var(--snow); font-weight: 700; }
+.wxhints { display: grid; gap: 8px; }
+.accpop .maplibregl-popup-content { max-height: 52vh; overflow-y: auto; }
+.map-wrap.popup-open .legend { display: none; }
+.accpop .popup p { margin: 2px 0; font-size: 14px; }
+.riskbox details > summary { font-size: 14px; }
+.riskbox .popup { font-size: 14px; padding: 6px 0 2px; }
 svg.profile { width: 100%; height: auto; display: block; }
 .notes { margin: 0; padding-left: 18px; font-size: 14px; }
 
@@ -300,7 +334,8 @@ img.chart { width: 100%; height: auto; display: block; border-radius: 8px; backg
           <div class="mseg" role="group" aria-label="Darstellung">
             <button type="button" id="m-2d" aria-pressed="true">2D</button><button type="button" id="m-3d" aria-pressed="false">3D</button>
           </div>
-          <button type="button" class="mbtn" id="m-layers">Ebenen</button>
+          <button type="button" class="mbtn" id="m-layers">Mehr</button>
+          <div class="qbar" id="m-quick" role="group" aria-label="Ebenen ein- und ausschalten"></div>
           <div class="mrow">
             <button type="button" class="mchip" id="m-title" hidden></button>
             <div class="mmsg" id="m-msg" role="status" hidden></div>
@@ -326,7 +361,7 @@ img.chart { width: 100%; height: auto; display: block; border-radius: 8px; backg
                 <div class="row">
                   <label>Steilste Stelle<select id="f-steep"><option value="90">egal</option><option value="40">unter 40°</option><option value="35">unter 35°</option><option value="30">unter 30°</option></select></label>
                   <label>Höhenmeter bis<select id="f-asc"><option value="99999">egal</option><option value="500">500 Hm</option><option value="800">800 Hm</option><option value="1000">1000 Hm</option><option value="1200">1200 Hm</option><option value="1500">1500 Hm</option></select></label>
-                  <label>Sortieren nach<select id="f-sort"><option value="snow">Neuschnee</option><option value="asc">Höhenmetern</option><option value="name">Name</option></select></label>
+                  <label>Sortieren nach<select id="f-sort"><option value="snow">Neuschnee</option><option value="risk">Auslöserisiko</option><option value="asc">Höhenmetern</option><option value="name">Name</option></select></label>
                 </div>
                 <label class="check"><input type="checkbox" id="f-avoid"> Routen durch Gefahrenstellen laut Bericht ausblenden</label>
                 <label class="check"><input type="checkbox" id="f-l3"> Gebiete mit Stufe 3 einbeziehen</label>
@@ -355,6 +390,10 @@ img.chart { width: 100%; height: auto; display: block; border-radius: 8px; backg
                 <input type="text" id="t-coord" inputmode="decimal" placeholder="z. B. 47.4514, 10.1592" required>
                 <span>In Google Maps oder Apple Karten lange auf den Gipfel drücken und die Koordinaten kopieren.</span>
               </label>
+              <label>Spur als GPX-Datei (optional)
+                <input type="file" id="t-gpx" accept=".gpx,application/gpx+xml,application/xml,text/xml">
+                <span id="t-gpx-info">Mit Spur zeichnet die App die Tour in die Karte und berechnet die Gefahrenabschnitte. Gipfel, Höhe, Steilheit und Expositionen füllt sie aus der Spur.</span>
+              </label>
               <div><div class="status">Expositionen der steilen Hänge</div><div class="aspects" id="t-aspects"></div></div>
               <div class="row"><button class="btn" type="submit" id="t-save">Tour speichern</button>
                 <button class="btn ghost" type="button" id="t-cancel" hidden>Abbrechen</button></div>
@@ -370,6 +409,12 @@ img.chart { width: 100%; height: auto; display: block; border-radius: 8px; backg
         </div>
       </div>
     </section>
+    <section class="page" id="page-wetter" aria-label="Wetter" hidden>
+      <div class="page-inner">
+        <label class="region-pick">Ort<select id="wx-place" aria-label="Ort für die Vorhersage"></select></label>
+        <div id="wx-body"><p class="status">Lade Vorhersage …</p></div>
+      </div>
+    </section>
   </main>
 
   <nav class="tabbar" aria-label="Seiten">
@@ -379,6 +424,8 @@ img.chart { width: 100%; height: auto; display: block; border-radius: 8px; backg
       <svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 6.5 9.3 4l7.4 2.5L23 4v15.5L16.7 22l-7.4-2.5L3 22z"/><path d="M9.3 4v15.5M16.7 6.5V22"/></svg>Karte</button>
     <button type="button" data-page="touren">
       <svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22c3-2.5 5-4 4.5-7S6 10.5 10 9.5s6-1 7.5-4"/><path d="M17.5 5.5V1.8l4 1.6-4 1.6"/><circle cx="4" cy="22" r="1.2"/></svg>Touren</button>
+    <button type="button" data-page="wetter">
+      <svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 17.5h11a4 4 0 0 0 .4-8 6 6 0 0 0-11.6 1.6A3.3 3.3 0 0 0 7.5 17.5z"/><path d="M9 21v1.5M13 21v1.5M17 21v1.5"/></svg>Wetter</button>
   </nav>
 </div>
 
@@ -392,7 +439,13 @@ img.chart { width: 100%; height: auto; display: block; border-radius: 8px; backg
 <div id="settings-src" hidden>
   <form class="add" id="settings">
     <label>Powderalert ab Neuschnee (cm in 24 h)<input type="number" id="s-thr" min="5" max="100" step="5"></label>
+    <label>Gruppe, für das Auslöserisiko<select id="s-group">
+      <option value="none">nicht berücksichtigen (vorsichtig)</option>
+      <option value="small">2 bis 4 Personen</option>
+      <option value="smallgap">2 bis 4 Personen mit Entlastungsabständen</option>
+      <option value="biggap">größere Gruppe mit Entlastungsabständen</option></select></label>
   </form>
+  <details class="panel" id="s-method"><summary>So rechnet die App das Auslöserisiko</summary></details>
   <div class="about">
     <p>Lageberichte: <a href="https://www.lawinenwarndienst.bayern.de" target="_blank" rel="noopener">Lawinenwarndienst Bayern</a>,
     <a href="https://avalanche.report" target="_blank" rel="noopener">Lawinenwarndienst Tirol (avalanche.report)</a>,
@@ -400,15 +453,16 @@ img.chart { width: 100%; height: auto; display: block; border-radius: 8px; backg
     Messstationen: Lawinenwarndienste Tirol, Bayern und Vorarlberg über avalanche.report und lawinen-warnung.eu, dazu die jeweils genannten Betreiber.
     Wetter: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (Modelldaten, nicht-kommerzielle Nutzung).
     Karten: OpenTopoMap und OpenStreetMap-Mitwirkende, Satellitenbild Sentinel-2 cloudless von EOX (enthält veränderte Copernicus-Sentinel-Daten 2020).
-    Gelände: Terrain Tiles (AWS Open Data). Teilgebiete: EAWS. Skitouren und Wildschutzgebiete: © OpenStreetMap-Mitwirkende (ODbL).</p>
-    <p>Diese App ist eine Entscheidungshilfe. Sie ersetzt nicht den vollständigen Lagebericht und nicht die Beurteilung im Gelände. Version 0.6.</p>
+    Gelände: Terrain Tiles (AWS Open Data). Teilgebiete: EAWS. Skitouren und Wildschutzgebiete: © OpenStreetMap-Mitwirkende (ODbL).
+    Lawinenereignisse: <a href="https://lawis.at/incident/" target="_blank" rel="noopener">LAWIS</a> (Lawinenwarndienste Österreichs, Bayern und Südtirol; LAWIS, Universität Wien), täglich aktualisiert während der Saison.</p>
+    <p>Diese App ist eine Entscheidungshilfe. Sie ersetzt nicht den vollständigen Lagebericht und nicht die Beurteilung im Gelände. Version 0.7.</p>
   </div>
 </div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script>
 "use strict";
-const VERSION = "0.6";
+const VERSION = "0.7";
 const LEVELS = { no_snow: 0, no_rating: 0, low: 1, moderate: 2, considerable: 3, high: 4, very_high: 5 };
 const LEVEL_NAME = ["keine Angabe", "gering", "mäßig", "erheblich", "groß", "sehr groß"];
 const PROBLEM = {
@@ -535,6 +589,9 @@ const state = {
   tourWx: new Map(),    // `${tourId}|${date}` -> promise of weather data
   tours: migrateTours(store.get("lawinenapp.tours.v1", EXAMPLE_TOURS)),
   threshold: store.get("lawinenapp.threshold.v1", 20),
+  group: store.get("lawinenapp.group.v1", "none"),
+  wxPlace: store.get("lawinenapp.wxplace.v1", "a:allgaeu:0"),
+  wxDay: null,
   tourSel: store.get("lawinenapp.toursel.v1", null),
   stationSel: {},       // tourId -> station id
   editing: null
@@ -704,6 +761,128 @@ function regionArea(id) {
   return id.startsWith("AT-07-") ? "tirol" : null;
 }
 
+// ---------- release risk (Auslöserisiko) ----------
+// Follows Werner Munter's reduction method: danger potential 2^level (gering 2, mäßig 4, erheblich 8, groß 16)
+// divided by reduction factors. Steepness of the slope: 40° and more 1, 35–39° 2, 30–34° 4, below 30° not rated.
+// A slope outside the aspects and elevations of the bulletin's avalanche problems gets factor 3, inside 1.
+// Group behaviour from the settings (small group 2, small group with spacing 3, larger group with spacing 2).
+// Residual risk up to 1 is what Munter calls accepted; the classes above are the app's own steps.
+const GROUP_RF = { none: 1, small: 2, smallgap: 3, biggap: 2 };
+const OUTSIDE_RF = 3;
+const RISK_NAME = ["gering", "erhöht", "hoch", "sehr hoch"];
+const RISK_COLORS = ["#7cc46b", "#ffd400", "#ff8a00", "#d7263d"];
+const RISK_RGB = [[124, 196, 107], [255, 212, 0], [255, 128, 0], [215, 38, 61]];
+const NO_PROBLEM = ["favourable_situation", "no_distinct_avalanche_problem"];
+const steepRF = s => s >= 40 ? 1 : s >= 35 ? 2 : s >= 30 ? 4 : 0;
+const riskClass = R => R > 4 ? 3 : R > 2 ? 2 : R > 1 ? 1 : 0;
+const groupRF = () => GROUP_RF[state.group] || 1;
+// Treeline has no fixed height: counted as 1600 m for "above" and 2000 m for "below" to stay on the cautious side.
+function bandHas(band, elev) {
+  if (!band) return true;
+  const lo = band.lowerBound, hi = band.upperBound;
+  if (lo != null && elev < (lo === "treeline" ? 1600 : Number(lo))) return false;
+  if (hi != null && elev >= (hi === "treeline" ? 2000 : Number(hi))) return false;
+  return true;
+}
+const riskCache = new Map();
+function compiled(regionId) {
+  if (!regionId) return null;
+  if (riskCache.has(regionId)) return riskCache.get(regionId);
+  const r = state.regions.get(regionId); let c = null;
+  if (r) {
+    const b = r.bulletin;
+    c = { id: regionId, max: maxLevel(b),
+      ratings: (b.dangerRatings || []).map(x => ({ band: x.elevation, l: LEVELS[x.mainValue] ?? 0 })),
+      probs: (b.avalancheProblems || []).filter(p => !NO_PROBLEM.includes(p.problemType))
+        .map(p => ({ band: p.elevation, asp: new Set(p.aspects && p.aspects.length ? p.aspects : ASPECTS), type: p.problemType })) };
+  }
+  riskCache.set(regionId, c);
+  return c;
+}
+function levelAt(c, elev) {
+  let l = 0, hit = false;
+  for (const x of c.ratings) if (bandHas(x.band, elev)) { hit = true; if (x.l > l) l = x.l; }
+  return hit ? l : c.max;
+}
+function pointRisk(c, elev, slope, asp) {
+  const rf = steepRF(slope); if (!rf || !c) return null;
+  const L = levelAt(c, elev); if (!L) return null;
+  const probs = c.probs.filter(p => p.asp.has(asp) && bandHas(p.band, elev)).map(p => p.type);
+  const R = 2 ** L / (rf * (probs.length ? 1 : OUTSIDE_RF) * groupRF());
+  return { R, cls: riskClass(R), L, spot: probs.length > 0, probs, slope, asp, elev };
+}
+// Rough estimate for a tour without a track: steepest class and aspects of the steep parts, checked at the summit
+// and 300 and 600 m lower. Unknown aspects count as lying in a danger spot.
+function tourRisk(t) {
+  const c = compiled(t.region); if (!c) return null;
+  const s = t.steep >= 4 ? 40 : t.steep === 3 ? 35 : t.steep === 2 ? 30 : 0;
+  if (!s) return { R: 0, cls: 0, L: c.max, flat: true };
+  const asps = t.aspects && t.aspects.length ? t.aspects : ASPECTS;
+  let best = null;
+  for (const e of [t.top, t.top - 300, t.top - 600]) for (const a of asps) {
+    const r = pointRisk(c, e, s, a);
+    if (r && (!best || r.R > best.R)) best = r;
+  }
+  return best && { ...best, guessed: !(t.aspects && t.aspects.length) };
+}
+const fmtR = R => num(R, R < 10 ? 1 : 0);
+const riskBadge = r => r ? el("span", { class: "badge " + (r.cls >= 2 ? "stop" : r.cls === 1 ? "warn" : ""), text: `Auslöserisiko ${RISK_NAME[r.cls]}` }) : null;
+const shapeBox = f => f._bb || (f._bb = bboxOf(f.geometry));
+function regionAt(lon, lat, shapes) {
+  for (const f of shapes) {
+    const [[w, s], [e, n]] = shapeBox(f);
+    if (lon >= w && lon <= e && lat >= s && lat <= n && pointInShape(lon, lat, f.geometry)) return f.properties.id;
+  }
+  return null;
+}
+// Risk at every sample of a track (about every 30 m). Sections are runs of samples with an elevated class;
+// a single sample in between does not split a section.
+function trackRisk(pts) {
+  const shapes = shapesFor(state.date);
+  let lastId = null, lastShape = null;
+  const rows = pts.map(p => {
+    let id = null;
+    if (lastShape && pointInShape(p.lon, p.lat, lastShape.geometry)) id = lastId;
+    else { id = regionAt(p.lon, p.lat, shapes); lastId = id; lastShape = id ? shapes.find(f => f.properties.id === id) : null; }
+    return { ...p, region: id, risk: id ? pointRisk(compiled(id), p.e, p.s, p.asp) : null };
+  });
+  const rated = rows.some(r => r.region && compiled(r.region));
+  const sections = []; let cur = null, gap = 0;
+  const close = () => { if (cur) sections.push(cur); cur = null; gap = 0; };
+  rows.forEach((p, k) => {
+    const hot = p.risk && p.risk.cls >= 1, prev = rows[k - 1];
+    if (cur && prev && prev.line !== p.line) close();
+    if (hot) {
+      if (!cur) cur = { pts: [], len: 0, maxR: 0, maxS: 0, asps: new Set(), probs: new Set(), eLo: Infinity, eHi: -Infinity, d0: p.d, line: p.line, regions: new Set() };
+      cur.pts.push(p); cur.len += p.seg || 0; gap = 0;
+      if (p.risk.R > cur.maxR) cur.maxR = p.risk.R;
+      cur.maxS = Math.max(cur.maxS, p.s); cur.asps.add(p.asp); p.risk.probs.forEach(x => cur.probs.add(x));
+      cur.eLo = Math.min(cur.eLo, p.e); cur.eHi = Math.max(cur.eHi, p.e); cur.d1 = p.d; cur.regions.add(p.region);
+    } else if (cur) { if (++gap > 1) close(); else cur.pts.push(p); }
+  });
+  close();
+  sections.forEach(s => { s.cls = riskClass(s.maxR); while (s.pts.length && !(s.pts.at(-1).risk && s.pts.at(-1).risk.cls >= 1)) s.pts.pop(); });
+  const maxR = Math.max(0, ...rows.map(r => r.risk ? r.risk.R : 0));
+  return { rows, sections, maxR, cls: riskClass(maxR), rated, regions: [...new Set(rows.map(r => r.region).filter(Boolean))] };
+}
+function riskGeoJSON(tr) {
+  return { type: "FeatureCollection", features: (tr ? tr.sections : []).filter(s => s.pts.length).map(s => ({
+    type: "Feature", properties: { cls: s.cls },
+    geometry: s.pts.length > 1 ? { type: "LineString", coordinates: s.pts.map(p => [p.lon, p.lat]) } : { type: "Point", coordinates: [s.pts[0].lon, s.pts[0].lat] } })) };
+}
+function methodText() {
+  return [
+    el("p", {}, "Die App rechnet nach der Reduktionsmethode von Werner Munter. Sie liefert eine relative Einschätzung, keine Wahrscheinlichkeit in Prozent: Dafür gibt es keine belastbare Datengrundlage."),
+    el("ul", { class: "notes" },
+      el("li", { text: "Gefahrenpotential aus der Gefahrenstufe des Lageberichts für die jeweilige Höhe: gering 2, mäßig 4, erheblich 8, groß 16, sehr groß 32." }),
+      el("li", { text: "Geteilt durch die Steilheit an der Stelle: ab 40° Faktor 1, 35 bis 39° Faktor 2, 30 bis 34° Faktor 4. Unter 30° wird nicht bewertet." }),
+      el("li", { text: "Liegt die Stelle außerhalb der Expositionen und Höhen der Lawinenprobleme im Bericht, Faktor 3, sonst 1. Die Waldgrenze zählt vorsichtig als 1600 m (oberhalb) und 2000 m (unterhalb)." }),
+      el("li", { text: "Gruppe laut Einstellung: kleine Gruppe Faktor 2, kleine Gruppe mit Entlastungsabständen 3, größere Gruppe mit Abständen 2, sonst 1." }),
+      el("li", { text: "Ergebnis ist das Restrisiko. Bis 1 gilt es nach Munter als akzeptiert (gering), über 1 erhöht, über 2 hoch, über 4 sehr hoch." })),
+    el("p", {}, "Gerechnet wird entlang der Spur alle 30 m mit dem Geländemodell (rund 30 m Auflösung). Kurze Steilstufen werden unterschätzt, Hänge oberhalb der Spur und Auslaufbereiche zählen nicht mit. Die Ebene Gefahrenzonen zeigt sie auf der Karte. Die Einschätzung ist eine Entscheidungshilfe, keine Freigabe.")
+  ];
+}
+
 // ---------- rendering: shared ----------
 const SVGNS = "http://www.w3.org/2000/svg";
 function rose(aspects) {
@@ -821,11 +1000,18 @@ function tourBadge(ev) {
     : el("span", { class: "badge", text: "Kein Bericht" });
 }
 const regionName = id => (state.regions.get(id) || {}).name || STATIC_REGION_NAMES[id] || id;
+// The track's result once it has been computed (tour detail or map), otherwise the rough estimate.
+function tourRiskNow(t) {
+  const key = tourKey(t);
+  const tr = key && trackCache.get(`${key}|${state.date}|${state.group}`);
+  return tr && tr.rated ? tr : tourRisk(t);
+}
 function tourNode(t, withActions) {
   const ev = evaluateTour(t);
   return el("div", { class: "tour" },
     el("div", { class: "top" },
-      levelDot(ev.level), el("span", { class: "name", text: t.name }), tourBadge(ev),
+      levelDot(ev.level), el("span", { class: "name", text: t.name }), tourBadge(ev), ev.status !== "none" ? riskBadge(tourRiskNow(t)) : null,
+      t.path || t.fromRoute ? el("span", { class: "badge", text: "mit Spur" }) : null,
       t.example ? el("span", { class: "badge", text: "Beispiel, Angaben prüfen" }) : null,
       withActions ? el("span", { class: "acts" },
         el("button", { class: "btn ghost", type: "button", onclick: () => showTour(t.id), text: "Details" }),
@@ -979,6 +1165,8 @@ async function renderTourDetail() {
   const t = state.tours.find(x => x.id === state.tourSel) || state.tours[0];
   sel.value = t.id;
   const ev = evaluateTour(t), date = state.date;
+  const riskBox = el("div", { class: "panel" }, el("h3", { text: "Auslöserisiko" }), el("p", { class: "status", text: "Berechne …" }));
+  const fcBox = el("div", { class: "panel" }, el("h3", { text: "Vorhersage für den Gipfel" }), el("p", { class: "status", text: "Lade Vorhersage …" }));
   const wxBox = el("div", { class: "panel" }, el("h3", { text: "Wetter auf dem Gipfel" }), el("p", { class: "status", text: "Lade Wetter …" }));
   const stBox = el("div", {}, el("p", { class: "status", text: "Lade Messstationen …" }));
   const bul = state.regions.get(t.region)
@@ -991,7 +1179,14 @@ async function renderTourDetail() {
         t.lat != null ? el("span", { class: "acts" }, el("button", { class: "btn ghost", type: "button", onclick: () => focusTour(t), text: "Auf der Karte" })) : null),
       el("div", { class: "meta", text: `${regionName(t.region)} · Gipfel ${t.top} m${t.lat != null ? ` · ${t.lat.toFixed(4)}, ${t.lon.toFixed(4)}` : ""}` }),
       ev.notes.length ? el("ul", {}, ev.notes.map(n => el("li", { text: n }))) : null),
-    bul, wxBox, stBox));
+    riskBox, bul, fcBox, wxBox, stBox));
+  const token0 = `${t.id}|${date}|${state.group}`; renderTourDetail.riskToken = token0;
+  renderTourRisk(t, riskBox, token0);
+  if (t.lat != null) forecastFor({ lat: t.lat, lon: t.lon, elev: t.top }, date).then(w => {
+    if (renderTourDetail.riskToken !== token0) return;
+    put(fcBox, el("h3", { text: `Vorhersage für den Gipfel, ${t.top} m` }), forecastView(w, date, { compact: true }));
+  }).catch(() => { if (renderTourDetail.riskToken === token0) put(fcBox, el("h3", { text: "Vorhersage für den Gipfel" }), el("p", { class: "status", text: "Die Vorhersage konnte nicht geladen werden." })); });
+  else fcBox.remove();
   if (t.lat == null) {
     const msg = el("div", { class: "note warn" }, "Für diese Tour fehlen die Koordinaten. ",
       el("button", { class: "btn ghost", type: "button", onclick: () => editTour(t.id), text: "Jetzt eintragen" }));
@@ -1013,6 +1208,32 @@ async function renderTourDetail() {
   }
   put(stBox, stationBlock(t, st.status === "fulfilled" ? st.value : [], date));
 }
+async function renderTourRisk(t, box, token) {
+  const ok = () => renderTourDetail.riskToken === token && box.isConnected;
+  if (t.fromRoute && !(layerData.routes && layerData.routes.features)) { try { await loadRoutes(); } catch (e) { /* rough estimate below */ } }
+  const g = tourGeom(t);
+  if (!ok()) return;
+  if (!g) {
+    const r = tourRisk(t);
+    put(box, el("h3", { text: "Auslöserisiko" }), !r ? el("p", { class: "status", text: "Für dieses Gebiet liegt kein Lagebericht vor, deshalb keine Berechnung." }) :
+      el("div", { class: "riskbox" },
+        el("div", { class: "riskhead" }, el("b", { text: "Grobe Abschätzung" }), el("span", { class: "rlevel r" + r.cls, text: RISK_NAME[r.cls] }),
+          r.R ? el("span", { class: "status", text: `Restrisiko ${fmtR(r.R)}, akzeptiert bis 1` }) : null),
+        el("p", { style: "margin:0", text: r.flat ? "Laut Eingabe keine Hänge ab 30°." : RISK_ADVICE[r.cls] }),
+        el("p", { class: "status", text: `Aus der steilsten Stelle (${["", "unter 30°", "30–35°", "35–40°", "über 40°"][t.steep] || "–"}) und ${r.guessed ? "unbekannten Expositionen, deshalb so gerechnet, als liege sie in einer Gefahrenstelle" : "den eingetragenen Expositionen"}. Mit einer GPX-Spur berechnet die App die einzelnen Abschnitte (Bearbeiten → GPX-Datei).` }),
+        el("details", {}, el("summary", { text: "So wird gerechnet" }), methodText())));
+    return;
+  }
+  put(box, el("h3", { text: "Auslöserisiko entlang der Spur" }), el("p", { class: "status", text: "Berechne Gefahrenabschnitte …" }));
+  const { info, tr } = await riskOf(tourKey(t), g).catch(() => ({ info: null, tr: null }));
+  if (!ok()) return;
+  const draw = near => put(box, el("h3", { text: "Auslöserisiko entlang der Spur" }), riskBlock(tr, near), info ? profileSvg(info.profile, tr) : null,
+    el("div", { class: "row" }, el("button", { class: "btn ghost", type: "button", onclick: () => focusTour(t), text: "Abschnitte auf der Karte" })));
+  draw(undefined);
+  renderTours();
+  const near = tr ? await accNear(tr.rows) : null;
+  if (ok()) draw(near);
+}
 function showTour(id) {
   state.tourSel = id; store.set("lawinenapp.toursel.v1", id);
   closeSheet();
@@ -1020,6 +1241,123 @@ function showTour(id) {
   renderTourDetail();
   $("#page-touren").scrollTop = 0;
 }
+// ---------- weather forecast ----------
+// Seven days from the chosen day, model data from Open-Meteo for the point and its elevation.
+const DAILY_FC = "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,rain_sum,snowfall_sum,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant";
+const WX_ICON = c => c == null ? "" : c === 0 ? "☀️" : c <= 2 ? "🌤️" : c === 3 ? "☁️" : c <= 48 ? "🌫️" : c <= 57 ? "🌦️" : c <= 67 ? "🌧️" : c <= 77 ? "🌨️" : c <= 82 ? "🌦️" : c <= 86 ? "🌨️" : "⛈️";
+const fcCache = new Map();
+function forecastFor(p, date) {
+  const today = ymd(new Date());
+  if (dayDiff(date, today) > 14) return Promise.reject(new Error("Datum zu weit in der Zukunft"));
+  let end = addDays(date, 6); if (dayDiff(end, today) > 15) end = addDays(today, 15);
+  const key = `${p.lat}|${p.lon}|${p.elev}|${date}|${end}`;
+  if (!fcCache.has(key)) {
+    const q = `latitude=${p.lat}&longitude=${p.lon}&elevation=${Math.round(p.elev)}&timezone=Europe%2FBerlin&start_date=${date}&end_date=${end}&daily=${DAILY_FC}`;
+    const base = weatherBase(date);
+    const pr = getJSON(`${base}?${q}&hourly=${HOURLY}`).catch(() => getJSON(`${base}?${q}&hourly=${HOURLY.replace(",freezing_level_height", "")}`));
+    pr.catch(() => fcCache.delete(key));
+    fcCache.set(key, pr);
+  }
+  return fcCache.get(key);
+}
+function dayFreezing(w, day) {
+  const h = w.hourly; if (!h || !h.freezing_level_height) return null;
+  const v = h.time.map((t, i) => [t, h.freezing_level_height[i]]).filter(([t, x]) => t.startsWith(day) && x != null && +t.slice(11, 13) >= 6 && +t.slice(11, 13) <= 18).map(x => x[1]);
+  return v.length ? Math.max(...v) : null;
+}
+// Slopes facing away from the wind collect the drifted snow.
+function leeAspects(from) {
+  if (from == null) return "windabgewandten";
+  const i = Math.round(((from + 180) % 360) / 45) % 8;
+  return [i + 7, i, i + 1].map(k => ASPECT_DE[ASPECTS[k % 8]]).join(", ") + "-";
+}
+function wxHints(w) {
+  const D = w.daily, out = [], n = Math.min(4, D.time.length);
+  let sum3 = 0; for (let i = 0; i < Math.min(3, n); i++) sum3 += D.snowfall_sum[i] || 0;
+  const big = D.time.slice(0, n).findIndex((d, i) => (D.snowfall_sum[i] || 0) >= 20);
+  if (sum3 >= 30 || big >= 0) out.push(["stop", `Viel Neuschnee: ${num(sum3)} cm in drei Tagen${big >= 0 ? `, am ${fmtDay(D.time[big])} allein ${num(D.snowfall_sum[big])} cm` : ""}. Ab etwa 20 bis 30 cm Neuschnee steigt die Lawinengefahr meist deutlich, vor allem mit Wind.`]);
+  else if (sum3 >= 10) out.push(["warn", `${num(sum3)} cm Neuschnee in drei Tagen. Auf frischen Triebschnee achten.`]);
+  const warm = [], windy = [];
+  for (let i = 0; i < n; i++) {
+    const d = D.time[i], s = D.snowfall_sum[i] || 0, wv = D.wind_speed_10m_max[i] || 0, gu = D.wind_gusts_10m_max[i] || 0, dir = D.wind_direction_10m_dominant[i];
+    if ((s >= 3 && (wv >= 30 || gu >= 50)) || wv >= 50) windy.push({ d, s, wv, gu, dir });
+    const r = D.rain_sum ? D.rain_sum[i] || 0 : 0, f = dayFreezing(w, d), tmax = D.temperature_2m_max[i];
+    if (r >= 1 || (f != null && f >= 2800) || tmax >= 6) warm.push({ d, r, f });
+  }
+  if (windy.length) {
+    const dirs = [...new Set(windy.map(x => dirName(x.dir)))], lee = [...new Set(windy.map(x => leeAspects(x.dir)))];
+    const snowy = windy.some(x => x.s >= 3);
+    out.push(["warn", `${windy.map(x => fmtDay(x.d).slice(0, 3).replace(".", "")).join(", ")}: ${snowy ? "Schneefall mit Wind" : "Starker Wind"} aus ${dirs.join(" und ")}, bis ${num(Math.max(...windy.map(x => x.wv)))} km/h, Böen bis ${num(Math.max(...windy.map(x => x.gu)))} km/h. Frischer Triebschnee vor allem in ${lee.join(" und ")}Hängen, kammnah, in Rinnen und Mulden.`]);
+  }
+  // Warmth and rain matter for the snowpack only in the season (November to May); one note for all such days.
+  const mon = Number(D.time[0].slice(5, 7));
+  if (warm.length && (mon >= 11 || mon <= 5)) {
+    const rain = warm.filter(x => x.r >= 1), fmax = Math.max(...warm.map(x => x.f || 0));
+    const days = warm.length === 1 ? fmtDay(warm[0].d) : `${fmtDay(warm[0].d)} bis ${fmtDay(warm[warm.length - 1].d)}`;
+    out.push(["warn", `${days}: ${rain.length ? `Regen (${rain.map(x => `${fmtDay(x.d).slice(0, 3)} ${num(x.r, 1)} mm`).join(", ")})` : "Starke Erwärmung"}${fmax ? `, Nullgradgrenze bis ${Math.round(fmax / 100) * 100} m` : ""}. Nass- und Gleitschneelawinen im Tagesverlauf möglich, früh starten und früh zurück sein.`]);
+  }
+  return out;
+}
+function forecastView(w, date, opts = {}) {
+  const D = w.daily, box = el("div", { style: "display:grid;gap:12px" });
+  let sel = opts.day && D.time.includes(opts.day) ? opts.day : D.time[0];
+  const hours = el("div", { style: "display:grid;gap:8px" });
+  const days = el("div", { class: "wxdays" });
+  const draw = () => {
+    put(days, D.time.map((d, i) => {
+      const fl = dayFreezing(w, d), s = D.snowfall_sum[i] || 0, p = D.precipitation_sum[i] || 0;
+      return el("button", { type: "button", class: "wxday", "aria-pressed": String(d === sel), onclick: () => { sel = d; if (opts.onDay) opts.onDay(d); draw(); } },
+        el("span", { class: "dn", text: d === ymd(new Date()) ? "Heute" : fmtDay(d).replace(".,", "") }),
+        el("span", { class: "ic", text: WX_ICON(D.weather_code && D.weather_code[i]), "aria-label": WMO(D.weather_code && D.weather_code[i]) }),
+        el("span", { class: "mid" },
+          s >= 0.5 ? el("span", { class: "sn", text: `${num(s)} cm Schnee` }) : p >= 0.2 ? `${num(p, 1)} mm` : "trocken",
+          " · Wind ", el("b", {}, wind(D.wind_speed_10m_max[i], D.wind_direction_10m_dominant[i])),
+          fl != null ? ` · 0° ${Math.round(fl / 100) * 100} m` : ""),
+        el("span", { class: "tt" }, el("b", { text: `${num(D.temperature_2m_max[i])}°` }), el("br"), el("span", { class: "status", text: `${num(D.temperature_2m_min[i])}°` })));
+    }));
+    put(hours, el("h3", { text: `Tagesverlauf ${fmtDate(sel)}` }), ...dayForecast(w, sel));
+  };
+  const hints = wxHints(w);
+  draw();
+  put(box,
+    hints.length ? el("div", { class: "wxhints" }, el("h3", { text: "Wichtig für die Lawinenlage" }), hints.slice(0, 5).map(([k, t]) => el("div", { class: "note " + k, text: t })),
+      el("p", { class: "status", text: "Hinweise aus der Wettervorhersage, ersetzen nicht den Lagebericht." })) : el("p", { class: "status", text: "Keine auffälligen Werte für die Lawinenlage in den nächsten Tagen (viel Neuschnee, Wind, Regen, starke Erwärmung)." }),
+    days, opts.compact ? el("details", {}, el("summary", { text: "Stundenwerte des gewählten Tages" }), hours) : hours);
+  return box;
+}
+function wxPlaces() {
+  const out = [];
+  for (const a of AREAS) a.points.forEach((p, i) => out.push({ key: `a:${a.key}:${i}`, label: `${a.name}: ${p.label}, ${p.elev} m`, lat: p.lat, lon: p.lon, elev: p.elev, group: "Gebiete" }));
+  for (const t of state.tours) if (t.lat != null) out.push({ key: `t:${t.id}`, label: `${t.name}, Gipfel ${t.top} m`, lat: t.lat, lon: t.lon, elev: t.top, group: "Meine Touren" });
+  return out;
+}
+let wxDirty = true;
+async function renderWeather() {
+  if (currentPage !== "wetter") { wxDirty = true; return; }
+  wxDirty = false;
+  const places = wxPlaces(), sel = $("#wx-place");
+  put(sel, ["Gebiete", "Meine Touren"].map(g => {
+    const items = places.filter(p => p.group === g);
+    return items.length ? el("optgroup", { label: g }, items.map(p => el("option", { value: p.key, text: p.label }))) : null;
+  }));
+  const p = places.find(x => x.key === state.wxPlace) || places[0];
+  sel.value = p.key;
+  const body = $("#wx-body"), date = state.date, token = `${p.key}|${date}`;
+  renderWeather.token = token;
+  put(body, el("p", { class: "status", text: "Lade Vorhersage …" }));
+  try {
+    const w = await forecastFor(p, date);
+    if (renderWeather.token !== token) return;
+    put(body, el("div", { class: "panel" },
+      el("h2", { text: p.label }),
+      el("p", { class: "status", text: `Vorhersage ab ${fmtDate(date)}, Modelldaten von Open-Meteo für ${p.elev} m, keine Messwerte. Wind in km/h, die Buchstaben nennen, woher er kommt. Tippe auf einen Tag für den Verlauf.` }),
+      forecastView(w, date, { day: state.wxDay, onDay: d => { state.wxDay = d; } })));
+  } catch (e) {
+    if (renderWeather.token !== token) return;
+    put(body, el("p", { class: "note", text: dayDiff(date, ymd(new Date())) > 14 ? "Für dieses Datum gibt es noch keine Vorhersage." : "Die Vorhersage konnte nicht geladen werden. Bitte die Internetverbindung prüfen." }));
+  }
+}
+
 // ---------- rendering: status ----------
 function renderStatus() {
   const parts = PROVIDERS.map(p => {
@@ -1043,7 +1381,7 @@ function fillRegionSelect() {
   for (const [id, name] of [...ids].sort((a, b) => a[1].localeCompare(b[1], "de"))) sel.append(el("option", { value: id, text: `${name} (${id})` }));
   if (cur) sel.value = cur;
 }
-function renderAll() { renderStatus(); renderAreas(); renderPowder(); renderTours(); fillRegionSelect(); renderTourDetail(); updateLageMap(); updateMap(); renderMapChrome(); renderFinder(); }
+function renderAll() { renderStatus(); renderAreas(); renderPowder(); renderTours(); fillRegionSelect(); renderTourDetail(); updateLageMap(); updateMap(); renderMapChrome(); renderFinder(); renderWeather(); }
 
 // ---------- map ----------
 // Overview: EAWS micro-regions coloured by the day's highest danger level. Tap a region: topographic map with
@@ -1058,13 +1396,18 @@ const SLOPE_CLASSES = [
   { label: "40–45°", color: [224, 32, 27] },
   { label: "über 45°", color: [138, 43, 226] }
 ];
-const SLOPE_MINZOOM = 12;
+const SLOPE_MINZOOM = 12, HAZARD_MINZOOM = 11;
 const levelMatch = ["match", ["get", "level"], 1, LEVEL_COLORS[1], 2, LEVEL_COLORS[2], 3, LEVEL_COLORS[3], 4, LEVEL_COLORS[4], 5, LEVEL_COLORS[5], LEVEL_COLORS[0]];
 const mapState = {
   map: null, ready: false, mode: "overview", region: null, three: false, full: false,
   shapes: null, names: {}, rev: 0,
   route: null, snowLabel: "",
-  filter: Object.assign({ slope: true, slopes: [true, true, true, true], aspects: [...ASPECTS], minElev: 0, snow: false, wild: false, routes: false }, store.get("lawinenapp.mapfilter.v1", {}))
+  filter: (() => {
+    const saved = store.get("lawinenapp.mapfilter.v1", {});
+    // Version 0.7 starts with danger zones, tours and incidents; the slope layer stays available but off, both colour slopes.
+    if (!("hazard" in saved)) Object.assign(saved, { hazard: true, slope: false, routes: true, acc: true });
+    return Object.assign({ hazard: true, slope: false, slopes: [true, true, true, true], aspects: [...ASPECTS], minElev: 0, snow: false, wild: false, routes: true, acc: true, accPeriod: "5" }, saved);
+  })()
 };
 // --- extra map layers: snow depth at stations, wildlife zones and ski touring routes (OpenStreetMap, refreshed weekly by a GitHub Action) ---
 // Relative to the app's root, also when a test copy runs from /test/.
@@ -1078,13 +1421,16 @@ const layerData = { routes: null, wild: null };
 async function ensureLayerData() {
   const m = mapState.map, f = mapState.filter; if (!m || !mapState.ready) return;
   for (const [key, url, src] of [["routes", ROUTES_URL, "routes"], ["wild", WILD_URL, "wild"]]) {
+    // Loaded before the map existed (tour suggestions): hand the data to the map once.
+    if (f[key] && layerData[key] && layerData[key] !== "loading" && !layerData[key]._onMap) { m.getSource(src).setData(layerData[key]); layerData[key]._onMap = true; continue; }
     if (!f[key] || layerData[key]) continue;
     layerData[key] = "loading";
-    try { const g = await getJSON(url); layerData[key] = g; m.getSource(src).setData(g); }
+    try { const g = await getJSON(url); layerData[key] = g; m.getSource(src).setData(g); g._onMap = true; }
     catch (e) { layerData[key] = null; showMapMsg(key === "routes" ? "Die Skitouren konnten nicht geladen werden." : "Die Wildschutzgebiete konnten nicht geladen werden."); }
     renderMapChrome();
   }
   if (f.snow) updateSnow();
+  if (f.acc) updateAcc();
 }
 // Snow depth: archived 6 o'clock values for past days, otherwise current values not older than 48 hours.
 let snowToken = 0;
@@ -1196,9 +1542,22 @@ async function analyzeRoute(geom) {
   // The longest line carries the profile; multi-part routes are shown one after another.
   let off = 0; const profile = [];
   lines.forEach((_, li) => { const part = pts.filter(p => p.line === li); part.forEach(p => profile.push([off + p.d, p.e])); if (part.length) off += part[part.length - 1].d; });
-  return { length, ascent, top, low, maxS, cls, aspects: ASPECTS.filter(a => (aspects[a] || 0) >= 60), profile };
+  return { length, ascent, top, low, maxS, cls, aspects: ASPECTS.filter(a => (aspects[a] || 0) >= 60), profile, pts };
 }
-function profileSvg(profile) {
+// Terrain analysis does not depend on the day, the risk on top of it does.
+const terrainCache = new Map(), trackCache = new Map();
+function terrainOf(key, geom) {
+  if (!terrainCache.has(key)) { const p = analyzeRoute(geom); p.catch(() => terrainCache.delete(key)); terrainCache.set(key, p); }
+  return terrainCache.get(key);
+}
+async function riskOf(key, geom) {
+  const [info] = await Promise.all([terrainOf(key, geom), loadRegionShapes()]);
+  if (!info) return { info: null, tr: null };
+  const k = `${key}|${state.date}|${state.group}`;
+  if (!trackCache.has(k)) trackCache.set(k, trackRisk(info.pts));
+  return { info, tr: trackCache.get(k) };
+}
+function profileSvg(profile, tr) {
   if (profile.length < 2) return null;
   const W = 600, H = 110, padL = 40, padB = 18, padT = 8;
   const maxD = profile[profile.length - 1][0] || 1, es = profile.map(p => p[1]);
@@ -1212,6 +1571,12 @@ function profileSvg(profile) {
   add("line", { x1: padL, y1: y(lo), x2: W - 6, y2: y(lo), stroke: "var(--line)" });
   const d = profile.map((p, k) => `${k ? "L" : "M"}${x(p[0]).toFixed(1)} ${y(p[1]).toFixed(1)}`).join(" ");
   add("path", { d: `${d} L${x(maxD).toFixed(1)} ${y(lo)} L${padL} ${y(lo)} Z`, fill: "color-mix(in srgb, var(--accent) 18%, transparent)", stroke: "none" });
+  // Samples with elevated risk as coloured bars under the curve (profile and track samples share one order).
+  if (tr && tr.rows.length === profile.length) tr.rows.forEach((r, k) => {
+    if (!k || !r.risk || r.risk.cls < 1) return;
+    const x0 = x(profile[k - 1][0]), x1 = x(profile[k][0]);
+    if (x1 > x0) add("rect", { x: x0.toFixed(1), width: Math.max(1, x1 - x0).toFixed(1), y: y(profile[k][1]).toFixed(1), height: Math.max(0, y(lo) - y(profile[k][1])).toFixed(1), fill: RISK_COLORS[r.risk.cls], opacity: 0.75 });
+  });
   add("path", { d, fill: "none", stroke: "var(--accent)", "stroke-width": 2 });
   add("text", { x: padL - 4, y: y(hi) + 4, "text-anchor": "end", "font-size": 11, fill: "var(--muted)" }, `${hi}`);
   add("text", { x: padL - 4, y: y(lo) + 4, "text-anchor": "end", "font-size": 11, fill: "var(--muted)" }, `${lo}`);
@@ -1219,17 +1584,146 @@ function profileSvg(profile) {
   add("text", { x: padL, y: H - 4, "font-size": 11, fill: "var(--muted)" }, "0");
   return svg;
 }
+// --- avalanche incidents from LAWIS, refreshed daily during the season by a GitHub Action ---
+const ACC_URL = APP_BASE + "data/unfaelle.geojson", ACC_TEXT_URL = APP_BASE + "data/unfaelle-text.json";
+const ACC_TYPE = { 1: "Schneebrett", 2: "Gleitschneelawine", 3: "Lockerschneelawine", 6: "Eislawine" };
+const ACC_SEV = { dead: ["#6a040f", "mit Todesopfern"], hurt: ["#e85d04", "Verletzte oder Verschüttete"], inv: ["#f6b100", "Personen beteiligt, unverletzt"], none: ["#8d99ae", "ohne Personen oder unbekannt"] };
+const ACC_PERIODS = [["1", "letzter Winter"], ["5", "letzte 5 Winter"], ["all", "alle seit 1992"]];
+// Winter 2025/26 is season 2026; from November on the next one counts.
+const seasonOf = d => { const y = Number(d.slice(0, 4)), m = Number(d.slice(5, 7)); return m >= 11 ? y + 1 : y; };
+let accPromise = null, accTextPromise = null;
+function loadAcc() {
+  if (!accPromise) accPromise = getJSON(ACC_URL).then(g => {
+    for (const f of g.features) { const p = f.properties; p.sev = p.dead > 0 ? "dead" : (p.inj > 0 || p.bur > 0 || p.par > 0) ? "hurt" : p.inv ? "inv" : "none"; p.season = seasonOf(p.d); }
+    return g;
+  }).catch(e => { accPromise = null; throw e; });
+  return accPromise;
+}
+function loadAccText() {
+  if (!accTextPromise) accTextPromise = getJSON(ACC_TEXT_URL).catch(e => { accTextPromise = null; throw e; });
+  return accTextPromise;
+}
+// Incidents up to the chosen day, within the chosen number of winters.
+function accFiltered(g) {
+  const per = mapState.filter.accPeriod || "5", until = state.date + " 23:59", cur = seasonOf(state.date);
+  return g.features.filter(f => f.properties.d <= until && (per === "all" || f.properties.season > cur - Number(per)));
+}
+async function updateAcc() {
+  const m = mapState.map; if (!m || !mapState.ready || !mapState.filter.acc) return;
+  try {
+    const g = await loadAcc(), feats = accFiltered(g);
+    m.getSource("acc").setData({ type: "FeatureCollection", features: feats });
+    mapState.accLabel = `${feats.length} Ereignisse, ${ACC_PERIODS.find(x => x[0] === (mapState.filter.accPeriod || "5"))[1]}`;
+  } catch (e) { showMapMsg("Die Lawinenereignisse konnten nicht geladen werden."); }
+  renderLegend();
+}
+function accFacts(p) {
+  const persons = [p.dead ? `${p.dead} tot` : null, p.inj ? `${p.inj} verletzt` : null, p.un ? `${p.un} unverletzt` : null].filter(Boolean).join(", ");
+  const buried = [p.bur ? `${p.bur} ganz verschüttet` : null, p.par ? `${p.par} teilverschüttet` : null, p.sw ? `${p.sw} mitgerissen` : null].filter(Boolean).join(", ");
+  return [
+    ["Stufe", p.l ? `${p.l} ${LEVEL_NAME[p.l]}` : "keine Angabe"],
+    ["Höhe", p.e ? `${p.e} m` : "–"],
+    ["Steilheit", p.i ? `${p.i}°` : "–"],
+    ["Exposition", p.a ? ASPECT_DE[p.a] : "–"],
+    p.t ? ["Lawine", `${ACC_TYPE[p.t] || "unbekannt"}${p.s ? `, Größe ${p.s} (${SIZE[p.s]})` : ""}${p.wet ? `, ${p.wet}` : ""}`] : null,
+    persons ? ["Personen", persons] : ["Personen", p.inv ? "beteiligt" : "keine bekannt"],
+    buried ? ["Erfasst", buried] : null,
+    p.ad ? ["Bei", p.ad] : null,
+    p.rel ? ["Auslösung", p.rel] : null
+  ].filter(Boolean);
+}
+function accNode(p) {
+  const text = el("p", { class: "status", text: "Lade Beschreibung …" });
+  loadAccText().then(t => { text.className = ""; text.textContent = t[p.id] || "Keine Beschreibung vorhanden."; })
+    .catch(() => { text.textContent = "Die Beschreibung konnte nicht geladen werden."; });
+  return el("div", { class: "popup" },
+    el("div", { class: "top" }, levelDot(p.l || null), el("b", { text: p.o || "Lawinenereignis" })),
+    el("div", { class: "status", text: new Date(p.d.replace(" ", "T")).toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) }),
+    el("dl", { class: "pdetail", style: "display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 10px;margin:0;padding:0;background:none" },
+      accFacts(p).map(([k, v]) => [el("dt", { class: "status", text: k }), el("dd", { style: "margin:0", text: v })])),
+    text,
+    el("div", { class: "status" }, "Quelle: ", el("a", { href: `https://lawis.at/incident/#${p.id}`, target: "_blank", rel: "noopener", text: "LAWIS" })));
+}
+function accPopup(p, lngLat) {
+  new maplibregl.Popup({ maxWidth: "300px", className: "accpop" }).setLngLat(lngLat).setDOMContent(accNode(p)).addTo(mapState.map);
+}
+// Incidents within 300 m of the track, all years.
+async function accNear(rows, km = 0.3) {
+  let g; try { g = await loadAcc(); } catch (e) { return null; }
+  if (!rows.length) return [];
+  let w = 180, s = 90, e = -180, n = -90;
+  for (const r of rows) { w = Math.min(w, r.lon); e = Math.max(e, r.lon); s = Math.min(s, r.lat); n = Math.max(n, r.lat); }
+  const pad = 0.006;
+  const step = Math.max(1, Math.floor(rows.length / 400));
+  return g.features.filter(f => {
+    const [lon, lat] = f.geometry.coordinates;
+    if (lon < w - pad || lon > e + pad || lat < s - pad || lat > n + pad) return false;
+    for (let k = 0; k < rows.length; k += step) if (distKm(rows[k], { lon, lat }) < km) return true;
+    return false;
+  }).map(f => f.properties).sort((a, b) => b.d.localeCompare(a.d));
+}
+const RISK_ADVICE = [
+  "Nach der Rechnung gering. Die Verhältnisse vor Ort trotzdem prüfen.",
+  "Erhöht: die markierten Abschnitte vor Ort genau beurteilen, einzeln gehen und fahren, Entlastungsabstände.",
+  "Hoch: die markierten Abschnitte nur mit sehr guter Beurteilung vor Ort, sonst meiden oder Alternative wählen.",
+  "Sehr hoch: die markierten Abschnitte meiden. Die Tour so heute eher nicht machen."
+];
+function riskBlock(tr, near) {
+  if (!tr) return el("div", { class: "riskbox" }, el("b", { text: "Auslöserisiko" }), el("p", { class: "status", text: "Für diese Spur konnten keine Geländedaten geladen werden." }));
+  const parts = [];
+  if (!tr.rated) parts.push(el("div", { class: "riskhead" }, el("b", { text: "Auslöserisiko" })),
+    el("p", { class: "status", text: state.regions.size ? "Für das Gebiet dieser Spur liegt kein Lagebericht vor, deshalb keine Berechnung." : "Ohne Lagebericht keine Berechnung. Die Saison beginnt etwa Ende November." }));
+  else {
+    parts.push(el("div", { class: "riskhead" }, el("b", { text: "Auslöserisiko" }), el("span", { class: "rlevel r" + tr.cls, text: RISK_NAME[tr.cls] }),
+      el("span", { class: "status", text: tr.maxR ? `höchstes Restrisiko ${fmtR(tr.maxR)}, akzeptiert bis 1` : "kein Abschnitt ab 30°" })),
+      el("p", { style: "margin:0", text: RISK_ADVICE[tr.cls] }));
+    if (tr.sections.length) parts.push(el("div", { class: "status", text: `${tr.sections.length} ${tr.sections.length === 1 ? "Abschnitt" : "Abschnitte"} mit erhöhtem Auslöserisiko, in der Karte farbig markiert:` }),
+      el("ul", { class: "sections" }, tr.sections.map(s => el("li", {}, el("i", { style: `background:${RISK_COLORS[s.cls]}` }),
+        el("span", {}, el("b", { text: `km ${num(s.d0 / 1000, 1)}${s.d1 != null && s.d1 - s.d0 > 50 ? `–${num(s.d1 / 1000, 1)}` : ""}: ${RISK_NAME[s.cls]}` }),
+          ` (${fmtR(s.maxR)}) · bis ${Math.round(s.maxS)}° · ${ASPECTS.filter(a => s.asps.has(a)).map(a => ASPECT_DE[a]).join(", ")} · ${Math.round(s.eLo)}${s.eHi - s.eLo > 20 ? `–${Math.round(s.eHi)}` : ""} m · `,
+          s.probs.size ? [...s.probs].map(x => PROBLEM[x] || x).join(", ") : "außerhalb der Gefahrenstellen laut Bericht")))));
+    else if (tr.maxR) parts.push(el("p", { class: "status", text: "Kein Abschnitt mit erhöhtem Auslöserisiko." }));
+  }
+  if (near === undefined) parts.push(el("p", { class: "status", text: "Suche Lawinenereignisse in der Nähe …" }));
+  else if (near) parts.push(el("div", { class: "accs" },
+    el("b", { text: near.length ? `Lawinenereignisse bis 300 m von der Spur: ${near.length}` : "Keine Lawinenereignisse bis 300 m von der Spur bekannt (LAWIS, seit 1992)." }),
+    near.slice(0, 8).map(p => el("details", {}, el("summary", { text: `${p.d.slice(8, 10)}.${p.d.slice(5, 7)}.${p.d.slice(0, 4)} · ${p.o || "ohne Ortsangabe"} · Stufe ${p.l || "–"}${p.dead ? " · tödlich" : ""}` }), accNode(p))),
+    near.length > 8 ? el("span", { class: "status", text: `und ${near.length - 8} weitere, siehe Ebene Unfälle.` }) : null));
+  parts.push(el("details", {}, el("summary", { text: "So wird gerechnet" }), methodText()));
+  return el("div", { class: "riskbox" }, parts);
+}
+function drawRisk(tr) {
+  const m = mapState.map; if (!m || !mapState.ready) return;
+  m.getSource("risk").setData(riskGeoJSON(tr));
+  renderLegend();
+}
 async function showRoute(feature) {
-  mapState.route = { feature, info: null };
+  mapState.route = { feature, info: null, tr: null, near: undefined };
   const m = mapState.map;
   m.setFilter("route-sel", ["==", ["get", "osm"], feature.properties.osm]);
+  m.setFilter("route-sel-casing", ["==", ["get", "osm"], feature.properties.osm]);
+  drawRisk(null);
   const holder = el("div", { style: "display:grid;gap:12px" });
   openSheet(routeName(feature.properties), holder, null, "route");
   put(holder, routePanel());
-  const info = await analyzeRoute(feature.geometry);
+  const { info, tr } = await riskOf(feature.properties.osm, feature.geometry).catch(() => ({ info: null, tr: null }));
   if (!mapState.route || mapState.route.feature !== feature) return;
-  mapState.route.info = info || "fail";
+  Object.assign(mapState.route, { info: info || "fail", tr });
+  drawRisk(tr);
   if (holder.isConnected) put(holder, routePanel());
+  const near = tr ? await accNear(tr.rows) : null;
+  if (!mapState.route || mapState.route.feature !== feature) return;
+  mapState.route.near = near;
+  if (holder.isConnected) put(holder, routePanel());
+}
+// The selected track stays drawn with its risk sections after the sheet closes; a tap on empty map clears it.
+function clearSelection() {
+  mapState.route = null; mapState.tourSelId = null;
+  const m = mapState.map; if (!m || !mapState.ready) return;
+  m.setFilter("route-sel", ["==", ["get", "osm"], "-"]);
+  m.setFilter("route-sel-casing", ["==", ["get", "osm"], "-"]);
+  m.setFilter("tourline-sel", ["==", ["get", "id"], "-"]);
+  drawRisk(null);
 }
 function routeName(p) { return routeTitle(p); }
 function routeAsTour(p, info) {
@@ -1258,8 +1752,9 @@ function routePanel() {
       kpi("Höhe", `${Math.round(info.low.e)} – ${Math.round(info.top.e)} m`, `rund ${Math.round(info.ascent / 10) * 10} Hm im Aufstieg`),
       kpi("Steilste Stelle", `${Math.round(info.maxS)}°`, "aus dem Geländemodell"),
       kpi("Steile Expositionen", info.aspects.length ? info.aspects.map(a => ASPECT_DE[a]).join(", ") : "–", "Abschnitte ab 30°")),
+    riskBlock(mapState.route.tr, mapState.route.near),
     steepTxt ? el("p", { class: "status", text: `Strecke in steilem Gelände: ${steepTxt}.` }) : el("p", { class: "status", text: "Laut Geländemodell kein Abschnitt steiler als 30°." }),
-    profileSvg(info.profile),
+    profileSvg(info.profile, mapState.route.tr),
     p.description ? el("p", { text: p.description }) : null,
     el("p", { class: "status", text: "Route aus OpenStreetMap, nicht geprüft. Höhen und Steilheit berechnet die App aus dem Geländemodell (rund 30 m), steile Stellen können steiler sein. Die Bewertung nimmt das Teilgebiet des höchsten Punkts." }),
     el("div", { class: "row" },
@@ -1366,6 +1861,63 @@ async function slopeTile(z, x, y, f) {
   return canvasToBuffer(c);
 }
 
+// --- danger zones: slopes from 30° coloured by the release risk of their own micro-region's bulletin ---
+// The region of a pixel comes from a grid every 8 px; only where the four corners disagree is the pixel tested itself.
+// MapLibre may hand the buffer to a worker, so every tile gets its own copy.
+const emptyTile = (() => { let p = null; return () => (p || (p = canvasToBuffer(makeCanvas(256)))).then(b => b.slice(0)); })();
+async function hazardTile(z, x, y) {
+  const n2 = 2 ** z, lonAt = i => (x + i / 256) / n2 * 360 - 180;
+  const latAt = j => Math.atan(Math.sinh(Math.PI * (1 - 2 * (y + j / 256) / n2))) * 180 / Math.PI;
+  const W = lonAt(0), E = lonAt(256), N = latAt(0), S = latAt(256);
+  const cand = shapesFor(state.date).filter(f => {
+    const [[w, s], [e, n]] = shapeBox(f);
+    return e >= W && w <= E && n >= S && s <= N && compiled(f.properties.id);
+  });
+  if (!cand.length) return emptyTile();
+  const h = await demTile(z, x, y);
+  const comp = cand.map(f => compiled(f.properties.id));
+  const find = (lon, lat) => { for (let k = 0; k < cand.length; k++) { const [[w, s], [e, n]] = shapeBox(cand[k]); if (lon >= w && lon <= e && lat >= s && lat <= n && pointInShape(lon, lat, cand[k].geometry)) return k; } return -1; };
+  const G = 8, gn = 256 / G + 1, grid = new Int16Array(gn * gn);
+  for (let gj = 0; gj < gn; gj++) for (let gi = 0; gi < gn; gi++) grid[gj * gn + gi] = find(lonAt(gi * G), latAt(gj * G));
+  const lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * (y + 0.5) / n2)));
+  const px = 40075016.686 * Math.cos(lat) / (256 * n2), gF = groupRF();
+  const c = makeCanvas(256), g = c.getContext("2d"), img = g.createImageData(256, 256), o = img.data;
+  const at = (i, j) => h[j * 256 + i];
+  for (let j = 0; j < 256; j++) {
+    const j0 = Math.max(0, j - 1), j1 = Math.min(255, j + 1), gj = Math.floor(j / G);
+    for (let i = 0; i < 256; i++) {
+      const i0 = Math.max(0, i - 1), i1 = Math.min(255, i + 1);
+      const sx = (i1 - i0) * px, sy = (j1 - j0) * px;
+      const dx = ((at(i1, j0) + 2 * at(i1, j) + at(i1, j1)) - (at(i0, j0) + 2 * at(i0, j) + at(i0, j1))) / (4 * sx);
+      const dy = ((at(i0, j1) + 2 * at(i, j1) + at(i1, j1)) - (at(i0, j0) + 2 * at(i, j0) + at(i1, j0))) / (4 * sy);
+      const s = Math.atan(Math.hypot(dx, dy)) * 180 / Math.PI;
+      if (s < 30) continue;
+      const gi = Math.floor(i / G), a = grid[gj * gn + gi], b = grid[gj * gn + gi + 1], cc = grid[(gj + 1) * gn + gi], d = grid[(gj + 1) * gn + gi + 1];
+      const k = a === b && a === cc && a === d ? a : find(lonAt(i + 0.5), latAt(j + 0.5));
+      if (k < 0) continue;
+      const cb = comp[k], e = at(i, j);
+      let br = Math.atan2(-dx, dy) * 180 / Math.PI; if (br < 0) br += 360;
+      const asp = ASPECTS[Math.round(br / 45) % 8];
+      const L = levelAt(cb, e); if (!L) continue;
+      let spot = false;
+      for (const p of cb.probs) if (p.asp.has(asp) && bandHas(p.band, e)) { spot = true; break; }
+      const cls = riskClass(2 ** L / (steepRF(s) * (spot ? 1 : OUTSIDE_RF) * gF));
+      if (!cls) continue;
+      const q = (j * 256 + i) * 4, col = RISK_RGB[cls];
+      o[q] = col[0]; o[q + 1] = col[1]; o[q + 2] = col[2]; o[q + 3] = cls === 1 ? 130 : 170;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  return canvasToBuffer(c);
+}
+let hazardRev = 0;
+function refreshHazard() {
+  hazardRev++;
+  const m = mapState.map; if (!m || !mapState.ready) return;
+  const src = m.getSource("hazard");
+  if (src && src.setTiles) src.setTiles([`hazard://{z}/{x}/{y}?r=${hazardRev}`]);
+}
+
 // --- map setup ---
 function showMapMsg(text) { const m = $("#m-msg"); m.textContent = text || ""; m.hidden = !text; }
 function initMap() {
@@ -1373,6 +1925,10 @@ function initMap() {
   maplibregl.addProtocol("slope", async params => {
     const m = params.url.match(/slope:\/\/(\d+)\/(\d+)\/(\d+)/);
     return { data: await slopeTile(Number(m[1]), Number(m[2]), Number(m[3]), mapState.filter) };
+  });
+  maplibregl.addProtocol("hazard", async params => {
+    const m = params.url.match(/hazard:\/\/(\d+)\/(\d+)\/(\d+)/);
+    return { data: await hazardTile(Number(m[1]), Number(m[2]), Number(m[3])) };
   });
   const map = new maplibregl.Map({
     container: "map", attributionControl: { compact: true }, maxPitch: 75,
@@ -1390,8 +1946,13 @@ function initMap() {
           attribution: 'Sentinel-2 cloudless von <a href="https://s2maps.eu" target="_blank" rel="noopener">EOX</a> (Copernicus-Sentinel-Daten 2020)' },
         // Computed at zoom 12 (about 26 m per pixel, close to the resolution of the elevation data) and enlarged above.
         slope: { type: "raster", tiles: ["slope://{z}/{x}/{y}?r=0"], tileSize: 256, minzoom: SLOPE_MINZOOM, maxzoom: 12 },
+        // Danger zones from zoom 11 (coarser there), finest at zoom 13: the elevation tiles carry 10 m data for Austria.
+        hazard: { type: "raster", tiles: [`hazard://{z}/{x}/{y}?r=${hazardRev}`], tileSize: 256, minzoom: HAZARD_MINZOOM, maxzoom: 13 },
         danger: { type: "geojson", data: { type: "FeatureCollection", features: [] } },
         tours: { type: "geojson", data: { type: "FeatureCollection", features: [] } },
+        tourlines: { type: "geojson", data: { type: "FeatureCollection", features: [] } },
+        risk: { type: "geojson", data: { type: "FeatureCollection", features: [] } },
+        acc: { type: "geojson", data: { type: "FeatureCollection", features: [] }, cluster: true, clusterMaxZoom: 11, clusterRadius: 34 },
         routes: { type: "geojson", data: { type: "FeatureCollection", features: [] } },
         wild: { type: "geojson", data: { type: "FeatureCollection", features: [] } },
         snow: { type: "geojson", data: { type: "FeatureCollection", features: [] } }
@@ -1404,42 +1965,65 @@ function initMap() {
         { id: "danger-fill", type: "fill", source: "danger", paint: { "fill-color": levelMatch, "fill-opacity": 0.55 } },
         { id: "wild-fill", type: "fill", source: "wild", minzoom: 9, layout: { visibility: "none" }, paint: { "fill-color": "#2e7d32", "fill-opacity": 0.28 } },
         { id: "slope", type: "raster", source: "slope", minzoom: SLOPE_MINZOOM, layout: { visibility: "none" } },
+        { id: "hazard", type: "raster", source: "hazard", minzoom: HAZARD_MINZOOM, layout: { visibility: "none" }, paint: { "raster-opacity": 0.9 } },
         { id: "danger-line", type: "line", source: "danger", paint: { "line-color": "#2b3a45", "line-width": 0.7, "line-opacity": 0.7 } },
         { id: "sel-line", type: "line", source: "danger", filter: ["==", ["get", "id"], "-"], paint: { "line-color": "#14202b", "line-width": 3.5 } },
         { id: "wild-line", type: "line", source: "wild", minzoom: 9, layout: { visibility: "none" }, paint: { "line-color": "#1b5e20", "line-width": 1.6, "line-dasharray": [2, 1] } },
         { id: "route-casing", type: "line", source: "routes", minzoom: 9, layout: { visibility: "none", "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#ffffff", "line-width": 5, "line-opacity": 0.85 } },
         { id: "route-line", type: "line", source: "routes", minzoom: 9, layout: { visibility: "none", "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#d4002a", "line-width": 2.4 } },
-        { id: "route-sel", type: "line", source: "routes", filter: ["==", ["get", "osm"], "-"], layout: { visibility: "none", "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#d4002a", "line-width": 6, "line-opacity": 0.9 } },
+        { id: "route-sel-casing", type: "line", source: "routes", filter: ["==", ["get", "osm"], "-"], layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#ffffff", "line-width": 9 } },
+        { id: "route-sel", type: "line", source: "routes", filter: ["==", ["get", "osm"], "-"], layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#13283a", "line-width": 5 } },
+        { id: "tourline-casing", type: "line", source: "tourlines", layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#ffffff", "line-width": 6 } },
+        { id: "tourline", type: "line", source: "tourlines", layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#1767b0", "line-width": 3 } },
+        { id: "tourline-sel", type: "line", source: "tourlines", filter: ["==", ["get", "id"], "-"], layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#13283a", "line-width": 5 } },
+        { id: "risk-line", type: "line", source: "risk", filter: ["==", ["geometry-type"], "LineString"], layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": ["match", ["get", "cls"], 1, RISK_COLORS[1], 2, RISK_COLORS[2], RISK_COLORS[3]], "line-width": 7 } },
+        { id: "risk-dot", type: "circle", source: "risk", filter: ["==", ["geometry-type"], "Point"], paint: { "circle-radius": 5, "circle-color": ["match", ["get", "cls"], 1, RISK_COLORS[1], 2, RISK_COLORS[2], RISK_COLORS[3]], "circle-stroke-color": "#13283a", "circle-stroke-width": 1 } },
         { id: "snow", type: "circle", source: "snow", layout: { visibility: "none" }, paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], 7, 4, 12, 8], "circle-color": snowColor, "circle-stroke-color": "#14202b", "circle-stroke-width": 1 } },
+        { id: "acc-cluster", type: "circle", source: "acc", filter: ["has", "point_count"], layout: { visibility: "none" },
+          paint: { "circle-color": "rgba(74, 44, 64, 0.78)", "circle-radius": ["step", ["get", "point_count"], 8, 10, 11, 50, 15, 200, 20], "circle-stroke-color": "#ffffff", "circle-stroke-width": 1.5 } },
+        { id: "acc", type: "circle", source: "acc", filter: ["!", ["has", "point_count"]], layout: { visibility: "none" },
+          paint: { "circle-color": ["match", ["get", "sev"], "dead", ACC_SEV.dead[0], "hurt", ACC_SEV.hurt[0], "inv", ACC_SEV.inv[0], ACC_SEV.none[0]],
+            "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 4.5, 14, 7.5], "circle-stroke-color": "#ffffff", "circle-stroke-width": 1.5 } },
         { id: "tours", type: "circle", source: "tours", paint: { "circle-radius": 7, "circle-color": levelMatch, "circle-stroke-color": "#14202b", "circle-stroke-width": 2 } }
       ]
     }
   });
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right");
+  map.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showAccuracyCircle: true }), "bottom-right");
   map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
-  map.on("load", async () => {
+  // Usable once the style is there; "load" would also wait for every tile of the first view.
+  const onReady = async () => {
+    if (mapState.ready) return;
     mapState.ready = true;
     const attrib = map.getContainer().querySelector(".maplibregl-ctrl-attrib");
     if (attrib) attrib.classList.remove("maplibregl-compact-show");
     await loadRegionShapes();
     if (!mapState.shapes.length) showMapMsg("Die Umrisse der Teilgebiete konnten nicht geladen werden.");
+    refreshHazard();
     updateMap();
     const q = mapReadyQueue.splice(0); q.forEach(fn => { try { fn(); } catch (e) { console.error(e); } });
-  });
+  };
+  map.once("style.load", onReady); map.once("load", onReady);
   const shown = ids => ids.filter(id => map.getLayer(id) && map.getLayoutProperty(id, "visibility") !== "none");
   map.on("click", e => {
     const box = [[e.point.x - 7, e.point.y - 7], [e.point.x + 7, e.point.y + 7]];
     const hit = (ids, at = box) => { const l = shown(ids); return l.length ? map.queryRenderedFeatures(at, { layers: l })[0] : null; };
-    const t = hit(["tours"]); if (t) { tourPopup(t.properties.id); return; }
+    const t = hit(["tours"]);
+    if (t) { const tt = state.tours.find(x => x.id === t.properties.id); if (tt && tourGeom(tt)) selectTourLine(tt.id); else tourPopup(t.properties.id); return; }
     const sn = hit(["snow"]); if (sn) { snowPopup(sn.properties, sn.geometry.coordinates); return; }
+    const ac = hit(["acc"]); if (ac) { accPopup(ac.properties, ac.geometry.coordinates); return; }
+    const cl = hit(["acc-cluster"]);
+    if (cl) { map.getSource("acc").getClusterExpansionZoom(cl.properties.cluster_id).then(z => map.easeTo({ center: cl.geometry.coordinates, zoom: Math.min(z + 0.3, 14) })).catch(() => {}); return; }
+    const tl = hit(["tourline"]); if (tl) { selectTourLine(tl.properties.id); return; }
     const r = hit(["route-line"]);
     if (r) { const all = layerData.routes && layerData.routes.features || []; showRoute(all.find(x => x.properties.osm === r.properties.osm) || r); return; }
     const w = hit(["wild-fill"], e.point); if (w) { wildPopup(w.properties, e.lngLat); return; }
+    if (mapState.route || mapState.tourSelId) { clearSelection(); mapState.tourSelId = null; return; }
     const f = map.queryRenderedFeatures(e.point, { layers: ["danger-fill"] })[0];
     if (f && f.properties.id !== mapState.region) enterRegion(f.properties.id);
   });
   map.on("mousemove", e => {
-    map.getCanvas().style.cursor = map.queryRenderedFeatures(e.point, { layers: shown(["tours", "snow", "route-line", "wild-fill", "danger-fill"]) }).length ? "pointer" : "";
+    map.getCanvas().style.cursor = map.queryRenderedFeatures(e.point, { layers: shown(["tours", "snow", "acc", "acc-cluster", "tourline", "route-line", "wild-fill", "danger-fill"]) }).length ? "pointer" : "";
   });
   map.on("zoomend", () => { updateZoomHint(); renderLegend(); });
   // MapLibre 4 sometimes keeps the camera height frozen at sea level after an animation with terrain.
@@ -1455,7 +2039,11 @@ function initMap() {
       map.setTerrain(null); map.setTerrain(spec);
     }, 120);
   });
-  map.on("error", e => { if (e && e.error && /slope/.test(String(e.error.message || ""))) console.warn(e.error); });
+  map.on("error", e => { if (e && e.error && /slope|hazard/.test(String(e.error.message || ""))) console.warn(e.error); });
+  // An open popup gets the room of the legend.
+  const wrap = $("#map-wrap");
+  new MutationObserver(() => wrap.classList.toggle("popup-open", !!map.getContainer().querySelector(".maplibregl-popup")))
+    .observe(map.getContainer(), { childList: true, subtree: false });
   mapState.map = map;
   renderMapChrome();
 }
@@ -1464,6 +2052,7 @@ function updateMap() {
   if (!m || !mapState.ready || !mapState.shapes) return;
   m.getSource("danger").setData(dangerGeoJSON());
   m.getSource("tours").setData(toursGeoJSON());
+  updateTourLines();
   applyMode();
   ensureLayerData();
 }
@@ -1485,16 +2074,35 @@ function applyMode() {
     : ["interpolate", ["linear"], ["zoom"], 10, ["case", ["==", ["get", "level"], 0], 0.15, 0.55], 12.5, ["case", ["==", ["get", "level"], 0], 0.05, 0.2]]);
   m.setFilter("sel-line", region ? selExpr : ["==", ["get", "id"], "-"]);
   m.setLayoutProperty("slope", "visibility", vis(f.slope));
+  m.setLayoutProperty("hazard", "visibility", vis(f.hazard));
   for (const id of ["wild-fill", "wild-line"]) m.setLayoutProperty(id, "visibility", vis(f.wild));
-  for (const id of ["route-casing", "route-line", "route-sel"]) m.setLayoutProperty(id, "visibility", vis(f.routes));
+  for (const id of ["route-casing", "route-line", "tourline-casing", "tourline", "tours"]) m.setLayoutProperty(id, "visibility", vis(f.routes));
+  for (const id of ["acc", "acc-cluster"]) m.setLayoutProperty(id, "visibility", vis(f.acc));
   m.setLayoutProperty("snow", "visibility", vis(f.snow));
   renderMapChrome();
   updateZoomHint();
 }
 function updateZoomHint() {
   const m = mapState.map; if (!m) return;
-  const need = mapState.mode === "region" && mapState.filter.slope && m.getZoom() < SLOPE_MINZOOM - 0.01;
-  showMapMsg(need ? "Für die Hangneigung näher heranzoomen." : "");
+  const z = m.getZoom(), f = mapState.filter;
+  if (f.hazard && z < HAZARD_MINZOOM - 0.01) showMapMsg(state.regions.size ? "Für die Gefahrenzonen näher heranzoomen." : "");
+  else if (f.slope && z < SLOPE_MINZOOM - 0.01) showMapMsg("Für die Hangneigung näher heranzoomen.");
+  else showMapMsg(f.hazard && !state.regions.size && mapState.mode === "region" ? "Ohne Lagebericht keine Gefahrenzonen." : "");
+}
+const QUICK = [["hazard", "Gefahrenzonen"], ["routes", "Touren"], ["acc", "Unfälle"], ["slope", "Hangneigung"], ["snow", "Schnee"], ["wild", "Wildschutz"]];
+function toggleLayer(key) {
+  const f = mapState.filter;
+  f[key] = !f[key];
+  // Both colour the slopes; showing both at once would be unreadable.
+  if (key === "hazard" && f.hazard) f.slope = false;
+  if (key === "slope" && f.slope) f.hazard = false;
+  store.set("lawinenapp.mapfilter.v1", f);
+  if (key === "slope" && f.slope) refreshSlope(); else applyMode();
+  ensureLayerData();
+}
+function renderQuick() {
+  const f = mapState.filter;
+  put($("#m-quick"), QUICK.map(([k, label]) => el("button", { type: "button", class: "qchip", "aria-pressed": String(!!f[k]), onclick: () => toggleLayer(k) }, label)));
 }
 function refreshSlope() {
   const m = mapState.map; if (!m || !mapState.ready) return;
@@ -1551,10 +2159,53 @@ function tourPopup(id) {
     el("div", {}, el("button", { class: "btn ghost", type: "button", onclick: () => showTour(t.id), text: "Tour im Detail" })));
   new maplibregl.Popup({ closeButton: true, maxWidth: "260px" }).setLngLat([t.lon, t.lat]).setDOMContent(content).addTo(m);
 }
+// Own tours with a track: an imported GPX track or the OpenStreetMap route they were saved from.
+function tourGeom(t) {
+  if (t.path && t.path.length > 1) return { type: "LineString", coordinates: t.path };
+  const rs = layerData.routes && layerData.routes.features;
+  if (t.fromRoute && rs) { const f = rs.find(x => x.properties.osm === t.fromRoute); if (f) return f.geometry; }
+  return null;
+}
+const tourKey = t => t.path && t.path.length > 1 ? `gpx:${t.id}:${t.path.length}:${t.path[0].join(",")}` : t.fromRoute;
+function tourLinesGeoJSON() {
+  return { type: "FeatureCollection", features: state.tours.map(t => ({ t, g: tourGeom(t) })).filter(x => x.g)
+    .map(({ t, g }) => ({ type: "Feature", geometry: g, properties: { id: t.id } })) };
+}
+function updateTourLines() {
+  const m = mapState.map; if (!m || !mapState.ready) return;
+  m.getSource("tourlines").setData(tourLinesGeoJSON());
+  if (state.tours.some(t => t.fromRoute) && !(layerData.routes && layerData.routes.features)) loadRoutes().then(() => m.getSource("tourlines").setData(tourLinesGeoJSON())).catch(() => {});
+}
+async function selectTourLine(id) {
+  const t = state.tours.find(x => x.id === id), g = t && tourGeom(t), m = mapState.map; if (!g || !m) return;
+  clearSelection(); mapState.tourSelId = id;
+  m.setFilter("tourline-sel", ["==", ["get", "id"], id]);
+  const holder = el("div", { style: "display:grid;gap:12px" });
+  const draw = (tr, near, info) => {
+    const ev = evaluateTour(t);
+    put(holder, el("div", { class: "panel" },
+      el("div", { class: "top" }, levelDot(ev.level), el("span", { class: "name", text: t.name }), tourBadge(ev)),
+      el("div", { class: "status", text: `${regionLabel(t.region)} · Gipfel ${t.top} m${info ? ` · ${num(info.length / 1000, 1)} km · rund ${Math.round(info.ascent / 10) * 10} Hm` : ""}` }),
+      tr === undefined ? el("p", { class: "status", text: "Berechne Gefahrenabschnitte …" }) : riskBlock(tr, near),
+      info ? profileSvg(info.profile, tr) : null,
+      el("div", { class: "row" }, el("button", { class: "btn", type: "button", onclick: () => showTour(t.id), text: "Tour im Detail" }))));
+  };
+  openSheet(t.name, holder, null, "route");
+  draw(undefined);
+  const { info, tr } = await riskOf(tourKey(t), g).catch(() => ({ info: null, tr: null }));
+  if (mapState.tourSelId !== id) return;
+  drawRisk(tr); draw(tr, undefined, info);
+  const near = tr ? await accNear(tr.rows) : null;
+  if (mapState.tourSelId === id && holder.isConnected) draw(tr, near, info);
+}
 function focusTour(t) {
   if (t.lat == null) return;
   closeSheet(); goPage("karte");
-  whenMapReady(() => enterRegion(t.region, [t.lon, t.lat]));
+  whenMapReady(() => {
+    const g = tourGeom(t);
+    if (g) { enterRegion(t.region); mapState.map.fitBounds(bboxOf(g), { padding: 50, maxZoom: 14 }); selectTourLine(t.id); }
+    else enterRegion(t.region, [t.lon, t.lat]);
+  });
 }
 // Aspects and lowest elevation of the bulletin's avalanche problems. Treeline counted as 1800 m to stay cautious.
 function dangerPreset(b) {
@@ -1582,6 +2233,7 @@ function renderMapChrome() {
   $("#m-3d").setAttribute("aria-pressed", String(mapState.three));
   $("#m-2d").setAttribute("aria-pressed", String(!mapState.three));
   if ($("#m-region").value !== (mapState.area || "all")) $("#m-region").value = mapState.area || "all";
+  renderQuick();
   renderLegend();
   renderMapPanel();
 }
@@ -1591,7 +2243,15 @@ function renderLegend() {
   const row = (sw, label) => el("div", {}, sw, label);
   const box = c => el("span", { class: "sw", style: `background:${c}` });
   const parts = [];
-  if (!region) parts.push(el("b", { text: "Gefahrenstufe" }), [1, 2, 3, 4, 5].map(l => row(box(LEVEL_COLORS[l]), `${l} ${LEVEL_NAME[l]}`)), row(box(LEVEL_COLORS[0]), "kein Bericht"));
+  if (!region && z < 11) parts.push(el("b", { text: "Gefahrenstufe" }), [1, 2, 3, 4, 5].map(l => row(box(LEVEL_COLORS[l]), `${l} ${LEVEL_NAME[l]}`)), row(box(LEVEL_COLORS[0]), "kein Bericht"));
+  if (f.hazard && z >= HAZARD_MINZOOM - 0.01 && state.regions.size) parts.push(el("b", { text: "Auslösewahrscheinlichkeit" }),
+    [3, 2, 1].map(k => row(el("span", { class: "sw risk-sw", style: `background:${RISK_COLORS[k]}` }), RISK_NAME[k])),
+    el("div", { class: "lnote", text: "Hänge ab 30°, nach Lagebericht des Tages" }));
+  if (f.routes) parts.push(row(el("span", { class: "sw line-sw" }), "Skitour (OSM)"), state.tours.some(t => t.path || t.fromRoute) ? row(el("span", { class: "sw tour-sw" }), "Meine Tour") : null);
+  if (mapState.route || mapState.tourSelId) parts.push(el("b", { text: "Gewählte Spur" }), [3, 2, 1].map(k => row(el("span", { class: "sw line-sw", style: `background:${RISK_COLORS[k]}` }), `Abschnitt ${RISK_NAME[k]}`)));
+  if (f.acc) parts.push(el("b", { text: "Lawinenereignisse" }), Object.values(ACC_SEV).map(([c, label]) => row(el("span", { class: "sw acc-sw", style: `background:${c}` }), label)),
+    row(el("span", { class: "sw acc-sw", style: "background:rgba(74,44,64,.78);width:14px;height:14px" }), "mehrere, antippen"),
+    mapState.accLabel ? el("div", { class: "lnote", text: mapState.accLabel }) : null);
   if (f.slope && (region || z >= SLOPE_MINZOOM)) parts.push(el("b", { text: "Hangneigung" }),
     SLOPE_CLASSES.map((c, k) => f.slopes[k] ? row(box(`rgb(${c.color.join(",")})`), c.label) : null));
   if (f.snow) {
@@ -1599,7 +2259,6 @@ function renderLegend() {
     parts.push(el("b", { text: "Schneehöhe in cm" }), SNOW_STEPS.map(([, c], k) => row(el("span", { class: "sw dot-sw", style: `background:${c}` }), lab[k])),
       mapState.snowLabel ? el("div", { class: "lnote", text: mapState.snowLabel }) : null);
   }
-  if (f.routes) parts.push(row(el("span", { class: "sw line-sw" }), "Skitour (OSM)"));
   if (f.wild) parts.push(row(el("span", { class: "sw wild-sw" }), "Wildschutz (OSM)"));
   put(leg, parts);
   leg.hidden = !parts.length;
@@ -1609,7 +2268,6 @@ function renderMapPanel() {
   const chip = (on, label, onclick, sw) => el("button", { type: "button", class: "fchip", "aria-pressed": String(on), onclick },
     sw ? el("span", { class: "sw", style: `background:${sw}` }) : null, label);
   const saveFilter = () => { store.set("lawinenapp.mapfilter.v1", f); applyMode(); ensureLayerData(); };
-  const toggle = key => () => { f[key] = !f[key]; saveFilter(); };
   const id = mapState.region, r = region ? state.regions.get(id) : null, lvl = r ? maxLevel(r.bulletin) : null;
   const preset = r ? dangerPreset(r.bulletin) : null;
   const usePreset = () => { f.aspects = preset.aspects; f.minElev = preset.minElev; f.slope = true; f.slopes = [true, true, true, true]; refreshSlope(); };
@@ -1623,8 +2281,11 @@ function renderMapPanel() {
     ![...state.regions.keys()].length ? el("p", { class: "status", text: "Für dieses Datum gibt es keine Lageberichte, deshalb sind alle Gebiete grau." }) : null,
     el("div", { class: "filters" },
       el("div", { class: "frow" }, el("span", { class: "flabel", text: "Ebenen" }),
-        chip(f.slope, "Hangneigung", toggle("slope")), chip(f.snow, "Schneehöhe", toggle("snow")),
-        chip(f.wild, "Wildschutz", toggle("wild")), chip(f.routes, "Skitouren", toggle("routes"))),
+        QUICK.map(([k, label]) => chip(!!f[k], label, () => { toggleLayer(k); renderMapPanel(); }))),
+      f.hazard ? el("p", { class: "status", text: `Gefahrenzonen: Hänge ab 30°, eingefärbt nach der Auslösewahrscheinlichkeit, berechnet aus dem Lagebericht des jeweiligen Teilgebiets (Stufe je Höhe, Expositionen und Höhen der Lawinenprobleme), der Steilheit und der Gruppe aus den Einstellungen. Ab Zoomstufe ${HAZARD_MINZOOM}, am genauesten ab 13. Gering wird nicht eingefärbt.` }) : null,
+      f.acc ? el("div", { class: "frow" }, el("span", { class: "flabel", text: "Lawinenereignisse" }),
+        ACC_PERIODS.map(([k, label]) => chip((f.accPeriod || "5") === k, label, () => { f.accPeriod = k; store.set("lawinenapp.mapfilter.v1", f); updateAcc(); renderMapPanel(); })),
+        el("span", { class: "status", text: "Aus LAWIS, bis zum gewählten Tag. Tippe auf einen Punkt für Hergang, Hangneigung, Exposition und Gefahrenstufe." })) : null,
       f.slope ? el("div", { class: "frow" }, el("span", { class: "flabel", text: "Steilheit" }),
         SLOPE_CLASSES.map((c, k) => chip(f.slopes[k], c.label, () => { f.slopes[k] = !f.slopes[k]; refreshSlope(); }, `rgb(${c.color.join(",")})`))) : null,
       f.slope ? el("div", { class: "frow" }, el("span", { class: "flabel", text: "Exposition" }),
@@ -1652,7 +2313,7 @@ function loadRoutes() {
   if (layerData.routes && layerData.routes !== "loading") return Promise.resolve(layerData.routes);
   if (!routesPromise) routesPromise = getJSON(ROUTES_URL).then(g => {
     layerData.routes = g;
-    if (mapState.map && mapState.ready) mapState.map.getSource("routes").setData(g);
+    if (mapState.map && mapState.ready) { mapState.map.getSource("routes").setData(g); g._onMap = true; }
     return g;
   }).catch(e => { routesPromise = null; throw e; });
   return routesPromise;
@@ -1728,6 +2389,7 @@ async function renderFinder() {
   rows.sort((a, b) => {
     if (finder.sort === "name") return routeTitle(a.f.properties).localeCompare(routeTitle(b.f.properties), "de");
     if (finder.sort === "asc") return a.f.properties.st.asc - b.f.properties.st.asc;
+    if (finder.sort === "risk") { const ra = tourRisk(a.pseudo), rb = tourRisk(b.pseudo); return ((ra ? ra.R : 99) - (rb ? rb.R : 99)) || a.f.properties.st.asc - b.f.properties.st.asc; }
     const sa = snowOf(a), sb = snowOf(b);
     return (rank[a.ev.status] - rank[b.ev.status]) || ((sb ? sb.past + sb.today : -1) - (sa ? sa.past + sa.today : -1));
   });
@@ -1748,6 +2410,7 @@ function routeCard({ f, ev, pseudo }, snow) {
   return el("div", { class: "tour" },
     el("div", { class: "top" }, levelDot(ev.level), el("span", { class: "name", text: routeTitle(p) }),
       ev.status === "warn" ? el("span", { class: "badge warn", text: "Warnung Stufe 3" }) : ev.status === "go" ? el("span", { class: "badge", text: "Lage prüfen" }) : el("span", { class: "badge", text: "ohne Bewertung" }),
+      ev.status !== "none" ? riskBadge(tourRisk(pseudo)) : null,
       p["piste:difficulty"] ? el("span", { class: "badge", text: DIFFICULTY[p["piste:difficulty"]] || p["piste:difficulty"] }) : null),
     el("div", { class: "meta", text: [regionLabel(p.region), `${st.asc} Hm`, `${num(st.len / 1000, 1)} km`, `bis ${pseudo.top} m`, `steilste Stelle ${st.max}°`,
       st.asp && st.asp.length ? `steil nach ${st.asp.map(a => ASPECT_DE[a]).join(", ")}` : null, p.peak && (p.name || p["piste:name"]) ? `Gipfel ${p.peak}` : null].filter(Boolean).join(" · ") }),
@@ -1773,7 +2436,7 @@ function finderSummary() {
   const parts = [];
   if (finder.steep < 90) parts.push(`unter ${finder.steep}°`);
   if (finder.asc < 99999) parts.push(`bis ${finder.asc} Hm`);
-  parts.push({ snow: "nach Neuschnee", asc: "nach Höhenmetern", name: "nach Name" }[finder.sort]);
+  parts.push({ snow: "nach Neuschnee", risk: "nach Auslöserisiko", asc: "nach Höhenmetern", name: "nach Name" }[finder.sort]);
   if (!finder.l3) parts.push("ohne Stufe 3");
   $("#f-more-sum").textContent = `Filter: ${parts.join(", ")}`;
 }
@@ -1802,7 +2465,7 @@ function showFinderFor(areaKey) {
 }
 
 // ---------- pages, sheet and the fixed overview map ----------
-const PAGES = { lage: "Lage", karte: "Karte", touren: "Touren" };
+const PAGES = { lage: "Lage", karte: "Karte", touren: "Touren", wetter: "Wetter" };
 let currentPage = "lage", tourView = "sugg";
 const mapReadyQueue = [];
 function whenMapReady(fn) { if (mapState.map && mapState.ready) fn(); else mapReadyQueue.push(fn); }
@@ -1816,6 +2479,7 @@ function goPage(name) {
     else requestAnimationFrame(() => mapState.map.resize());
   }
   if (name === "lage" && lageMap.map) requestAnimationFrame(() => lageMap.map.resize());
+  if (name === "wetter" && wxDirty) renderWeather();
 }
 function setTourView(v) {
   tourView = v;
@@ -1836,10 +2500,6 @@ function openSheet(title, node, returnTo, kind) {
 }
 function closeSheet(keepState) {
   if (sheetReturn) { sheetReturn.node.hidden = true; sheetReturn.parent.append(sheetReturn.node); sheetReturn = null; }
-  if (!keepState && sheetKind === "route" && mapState.route) {
-    mapState.route = null;
-    if (mapState.map && mapState.ready) mapState.map.setFilter("route-sel", ["==", ["get", "osm"], "-"]);
-  }
   if (!keepState && lageMap.ready) lageMap.map.setFilter("sel", ["==", ["get", "id"], "-"]);
   sheetKind = null;
   $("#sheet").hidden = true; $("#sheet-bg").hidden = true;
@@ -1853,7 +2513,10 @@ function regionContent(id) {
         el("div", { class: "s", text: lvl != null ? `${LEVEL_NAME[lvl]}${elev ? ", " + elev : ""}` : "Kein Lagebericht für diesen Tag" }))),
     el("div", { class: "row" },
       el("button", { class: "btn", type: "button", onclick: () => { closeSheet(); goPage("karte"); whenMapReady(() => enterRegion(id)); }, text: "Auf der Karte" }),
-      el("button", { class: "btn ghost", type: "button", onclick: () => showFinderFor(regionArea(id) || "all"), text: "Tourenvorschläge" })),
+      el("button", { class: "btn ghost", type: "button", onclick: () => showFinderFor(regionArea(id) || "all"), text: "Tourenvorschläge" }),
+      regionArea(id) ? el("button", { class: "btn ghost", type: "button", onclick: () => {
+        state.wxPlace = `a:${regionArea(id)}:0`; store.set("lawinenapp.wxplace.v1", state.wxPlace); state.wxDay = null;
+        closeSheet(); wxDirty = true; goPage("wetter"); }, text: "Wetter" }) : null),
     r ? bulletinDetail(id) : el("p", { class: "status", text: "Außerhalb der Saison erscheinen keine Lageberichte, die Saison beginnt etwa Ende November." }));
 }
 function openRegionSheet(id) {
@@ -1931,6 +2594,10 @@ async function load() {
   if (date !== state.date) return;
   if (b.status === "fulfilled") { state.regions = b.value.regions; state.fetched = b.value.fetched; }
   else { state.regions = new Map(); state.fetched = {}; }
+  riskCache.clear(); trackCache.clear(); refreshHazard();
+  // A selected track was rated for the previous day.
+  if (sheetKind === "route") closeSheet();
+  clearSelection(); mapState.tourSelId = null;
   state.weather = w.status === "fulfilled" ? w.value : null;
   renderAll();
 }
@@ -1969,12 +2636,15 @@ function editTour(id) {
   $("#t-name").value = t.name; fillRegionSelect(); $("#t-region").value = t.region; $("#t-top").value = t.top; $("#t-steep").value = t.steep;
   $("#t-coord").value = t.lat != null ? `${t.lat}, ${t.lon}` : "";
   for (const a of ASPECTS) $("#asp-" + a).checked = t.aspects.includes(a);
-  $("#t-cancel").hidden = false; $("#t-msg").textContent = "";
+  $("#t-cancel").hidden = false; $("#t-msg").textContent = ""; gpxPath = null; $("#t-gpx").value = "";
+  $("#t-gpx-info").textContent = t.path || t.fromRoute ? "Diese Tour hat schon eine Spur. Eine neue GPX-Datei ersetzt sie." : "Mit Spur zeichnet die App die Tour in die Karte und berechnet die Gefahrenabschnitte.";
   goPage("touren"); setTourView("mine");
   $("#add-wrap").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 function resetForm() {
   state.editing = null; $("#add-form").reset(); $("#t-cancel").hidden = true; $("#add-summary").textContent = "Tour hinzufügen";
+  gpxPath = null;
+  $("#t-gpx-info").textContent = "Mit Spur zeichnet die App die Tour in die Karte und berechnet die Gefahrenabschnitte. Gipfel, Höhe, Steilheit und Expositionen füllt sie aus der Spur.";
 }
 
 $("#btn-today").addEventListener("click", () => setDate(ymd(new Date())));
@@ -1990,6 +2660,10 @@ $("#add-form").addEventListener("submit", e => {
   const t = { id: state.editing || "t" + Date.now(), name: $("#t-name").value.trim(), region: $("#t-region").value,
     top: Number($("#t-top").value), steep: Number($("#t-steep").value), lat: c.lat, lon: c.lon,
     aspects: [...document.querySelectorAll("#t-aspects input:checked")].map(i => i.value) };
+  // Editing keeps the track (OSM route or GPX) unless a new GPX file was chosen.
+  const prev = state.editing && state.tours.find(x => x.id === state.editing);
+  if (gpxPath) t.path = gpxPath;
+  else if (prev) { if (prev.path) t.path = prev.path; if (prev.fromRoute) t.fromRoute = prev.fromRoute; }
   if (!t.name || !t.top) return;
   if (state.editing) state.tours = state.tours.map(x => x.id === state.editing ? t : x); else state.tours.push(t);
   $("#t-msg").textContent = state.editing ? "Änderung gespeichert." : "Tour gespeichert.";
@@ -1998,6 +2672,56 @@ $("#add-form").addEventListener("submit", e => {
 $("#s-thr").value = state.threshold;
 $("#s-thr").addEventListener("change", e => { state.threshold = Number(e.target.value) || 20; store.set("lawinenapp.threshold.v1", state.threshold); renderPowder(); });
 $("#settings").addEventListener("submit", e => e.preventDefault());
+$("#s-group").value = state.group;
+$("#s-group").addEventListener("change", e => {
+  state.group = e.target.value; store.set("lawinenapp.group.v1", state.group);
+  refreshHazard(); clearSelection(); renderTours(); renderTourDetail(); renderFinder();
+});
+$("#s-method").append(el("div", { style: "display:grid;gap:8px;font-size:15px" }, methodText()));
+$("#wx-place").addEventListener("change", e => { state.wxPlace = e.target.value; store.set("lawinenapp.wxplace.v1", state.wxPlace); state.wxDay = null; renderWeather(); });
+// GPX: track points (or route points), simplified, highest point as summit; steepness and aspects from the terrain model.
+let gpxPath = null;
+function parseGPX(text) {
+  const doc = new DOMParser().parseFromString(text, "application/xml");
+  let pts = [...doc.getElementsByTagName("trkpt")];
+  if (!pts.length) pts = [...doc.getElementsByTagName("rtept")];
+  const coords = pts.map(p => [Number(p.getAttribute("lon")), Number(p.getAttribute("lat")), Number((p.getElementsByTagName("ele")[0] || {}).textContent)])
+    .filter(c => Number.isFinite(c[0]) && Number.isFinite(c[1]));
+  const nameNode = doc.querySelector("metadata > name, trk > name, rte > name");
+  return { coords, name: nameNode ? nameNode.textContent.trim() : "" };
+}
+function thinPath(coords, maxPts = 600) {
+  // Keep a point every ~15 m at least, then cap the number of points.
+  const out = [];
+  for (const c of coords) { const l = out[out.length - 1]; if (!l || distKm({ lon: l[0], lat: l[1] }, { lon: c[0], lat: c[1] }) > 0.015) out.push(c); }
+  const step = Math.max(1, Math.ceil(out.length / maxPts));
+  const res = out.filter((_, i) => i % step === 0);
+  if (res[res.length - 1] !== out[out.length - 1]) res.push(out[out.length - 1]);
+  return res.map(c => [+c[0].toFixed(5), +c[1].toFixed(5)]);
+}
+$("#t-gpx").addEventListener("change", async e => {
+  const file = e.target.files && e.target.files[0], info = $("#t-gpx-info");
+  gpxPath = null; if (!file) return;
+  try {
+    const { coords, name } = parseGPX(await file.text());
+    if (coords.length < 2) { info.textContent = "In der Datei wurde keine Spur gefunden."; return; }
+    const path = thinPath(coords);
+    if (!path.every(c => c[1] > 43 && c[1] < 49 && c[0] > 4 && c[0] < 18)) { info.textContent = "Die Spur liegt außerhalb der Alpen, die die App kennt."; return; }
+    info.textContent = "Werte die Spur aus …";
+    const terr = await analyzeRoute({ type: "LineString", coordinates: path });
+    await loadRegionShapes();
+    if (!terr) { info.textContent = "Für die Spur konnten keine Geländedaten geladen werden."; return; }
+    gpxPath = path;
+    if (!$("#t-name").value && name) $("#t-name").value = name;
+    $("#t-top").value = Math.round(terr.top.e);
+    $("#t-coord").value = `${terr.top.lat.toFixed(5)}, ${terr.top.lon.toFixed(5)}`;
+    $("#t-steep").value = terr.maxS >= 40 ? 4 : terr.maxS >= 35 ? 3 : terr.maxS >= 30 ? 2 : 1;
+    for (const a of ASPECTS) $("#asp-" + a).checked = terr.aspects.includes(a);
+    const reg = regionAt(terr.top.lon, terr.top.lat, shapesFor(state.date));
+    if (reg) { fillRegionSelect(); if (![...$("#t-region").options].some(o => o.value === reg)) $("#t-region").append(el("option", { value: reg, text: `${regionLabel(reg)} (${reg})` })); $("#t-region").value = reg; }
+    info.textContent = `Spur übernommen: ${num(terr.length / 1000, 1)} km, rund ${Math.round(terr.ascent / 10) * 10} Hm, steilste Stelle ${Math.round(terr.maxS)}°. Gipfel, Höhe, Gebiet, Steilheit und Expositionen sind ausgefüllt, bitte prüfen.`;
+  } catch (err) { info.textContent = "Die Datei konnte nicht gelesen werden."; }
+});
 document.querySelectorAll("nav.tabbar button").forEach(b => b.addEventListener("click", () => { closeSheet(); goPage(b.dataset.page); }));
 $("#tv-sugg").addEventListener("click", () => setTourView("sugg"));
 $("#tv-mine").addEventListener("click", () => setTourView("mine"));

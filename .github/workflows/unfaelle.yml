@@ -1,0 +1,37 @@
+name: Unfalldaten aktualisieren
+on:
+  workflow_dispatch:
+  schedule:
+    # Daily during the season (November to June), 04:47 UTC.
+    - cron: "47 4 * 1-6,11,12 *"
+  push:
+    paths:
+      - "tools/unfaelle.mjs"
+      - ".github/workflows/unfaelle.yml"
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: data-commit
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node tools/unfaelle.mjs
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          if git diff --cached --quiet; then echo "keine Änderung"; else git commit -m "Unfalldaten aktualisiert"; git pull --rebase; git push; echo "changed=1" >> "$GITHUB_ENV"; fi
+      # Pushes made with the workflow token do not start a Pages build on their own.
+      - name: Pages neu bauen
+        if: env.changed == '1'
+        run: |
+          curl -fsS -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pages/builds" || echo "Pages-Build konnte nicht angestoßen werden"
