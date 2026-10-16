@@ -93,7 +93,7 @@ async function routes() {
 const ZONE_TAGS = ["name", "protection_title", "protect_class", "description", "seasonal", "access", "access:conditional", "ski", "ski:conditional",
   "opening_hours", "operator", "website", "related_law", "hazard", "start_date", "note", "leisure", "boundary"];
 const WILD = /schongebiet|schutzzone|wildruhe|ruhezone|wildschutz|wald-wild|gebietsverbot|wegegebot|wild-europaschutz|wildlife|raufu|auerhuhn|birkhuhn|einstand/i;
-const NOT_WILD = /flora|fauna-flora|naturpark|naturdenkmal|wiesenbr|fischlaich|natura 2000/i;
+const NOT_WILD = /flora|fauna-flora|naturpark|naturdenkmal|wiesenbr|fischlaich|natura 2000|wasserschutz/i;
 async function zones() {
   const q = `[out:json][timeout:600];(way["boundary"="protected_area"](${BBOX});relation["boundary"="protected_area"](${BBOX});way["leisure"="nature_reserve"](${BBOX});relation["leisure"="nature_reserve"](${BBOX}););out geom;`;
   const j = await overpass(q);
