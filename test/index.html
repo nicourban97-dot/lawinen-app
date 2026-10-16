@@ -397,7 +397,7 @@ img.chart { width: 100%; height: auto; display: block; border-radius: 8px; backg
     <a href="https://www.vorarlberg.at/lawinenbericht" target="_blank" rel="noopener">Lawinenwarndienst Vorarlberg</a>.
     Messstationen: Lawinenwarndienste Tirol, Bayern und Vorarlberg über avalanche.report und lawinen-warnung.eu, dazu die jeweils genannten Betreiber.
     Wetter: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (Modelldaten, nicht-kommerzielle Nutzung).
-    Karten: OpenTopoMap, CARTO und OpenStreetMap-Mitwirkende, Satellitenbild Sentinel-2 cloudless von EOX (enthält veränderte Copernicus-Sentinel-Daten 2020).
+    Karten: OpenTopoMap und OpenStreetMap-Mitwirkende, Satellitenbild Sentinel-2 cloudless von EOX (enthält veränderte Copernicus-Sentinel-Daten 2020).
     Gelände: Terrain Tiles (AWS Open Data). Teilgebiete: EAWS. Skitouren und Wildschutzgebiete: © OpenStreetMap-Mitwirkende (ODbL).</p>
     <p>Diese App ist eine Entscheidungshilfe. Sie ersetzt nicht den vollständigen Lagebericht und nicht die Beurteilung im Gelände. Version 0.6.</p>
   </div>
@@ -1382,9 +1382,8 @@ function initMap() {
           attribution: 'Karte © <a href="https://opentopomap.org" target="_blank" rel="noopener">OpenTopoMap</a> (CC-BY-SA), Daten © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>-Mitwirkende · Gelände: Terrain Tiles (AWS Open Data) · Gebiete: EAWS' },
         dem3d: { type: "raster-dem", tiles: [DEM_URL], encoding: "terrarium", tileSize: 256, maxzoom: 15 },
         hill: { type: "raster-dem", tiles: [DEM_URL], encoding: "terrarium", tileSize: 256, maxzoom: 14 },
-        relief: { type: "raster", tiles: ["a", "b", "c", "d"].map(s => `https://${s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png`), tileSize: 256, maxzoom: 19,
-          attribution: '© <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>' },
-        labels: { type: "raster", tiles: ["a", "b", "c", "d"].map(s => `https://${s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png`), tileSize: 256, maxzoom: 19 },
+        relief: { type: "raster", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], tileSize: 256, maxzoom: 19,
+          attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>-Mitwirkende' },
         sat: { type: "raster", tiles: ["https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/{z}/{y}/{x}.jpg"], tileSize: 256, maxzoom: 15,
           attribution: 'Sentinel-2 cloudless von <a href="https://s2maps.eu" target="_blank" rel="noopener">EOX</a> (Copernicus-Sentinel-Daten 2020)' },
         // Computed at zoom 12 (about 26 m per pixel, close to the resolution of the elevation data) and enlarged above.
@@ -1397,7 +1396,7 @@ function initMap() {
       },
       layers: [
         { id: "topo", type: "raster", source: "topo", paint: { "raster-saturation": -0.75, "raster-opacity": 0.9 } },
-        { id: "relief", type: "raster", source: "relief", layout: { visibility: "none" } },
+        { id: "relief", type: "raster", source: "relief", layout: { visibility: "none" }, paint: { "raster-saturation": -0.35, "raster-opacity": 0.9 } },
         { id: "sat", type: "raster", source: "sat", layout: { visibility: "none" }, paint: { "raster-saturation": -0.1 } },
         { id: "hillshade", type: "hillshade", source: "hill", layout: { visibility: "none" }, paint: { "hillshade-exaggeration": 0.45, "hillshade-shadow-color": "#3d5263", "hillshade-highlight-color": "#ffffff" } },
         { id: "danger-fill", type: "fill", source: "danger", paint: { "fill-color": levelMatch, "fill-opacity": 0.55 } },
@@ -1410,7 +1409,6 @@ function initMap() {
         { id: "route-line", type: "line", source: "routes", minzoom: 9, layout: { visibility: "none", "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#d4002a", "line-width": 2.4 } },
         { id: "route-sel", type: "line", source: "routes", filter: ["==", ["get", "osm"], "-"], layout: { visibility: "none", "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#d4002a", "line-width": 6, "line-opacity": 0.9 } },
         { id: "snow", type: "circle", source: "snow", layout: { visibility: "none" }, paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], 7, 4, 12, 8], "circle-color": snowColor, "circle-stroke-color": "#14202b", "circle-stroke-width": 1 } },
-        { id: "labels", type: "raster", source: "labels", layout: { visibility: "none" } },
         { id: "tours", type: "circle", source: "tours", paint: { "circle-radius": 7, "circle-color": levelMatch, "circle-stroke-color": "#14202b", "circle-stroke-width": 2 } }
       ]
     }
@@ -1476,7 +1474,6 @@ function applyMode() {
   m.setLayoutProperty("relief", "visibility", vis(base === "relief"));
   m.setLayoutProperty("hillshade", "visibility", vis(base === "relief"));
   m.setLayoutProperty("sat", "visibility", vis(base === "sat"));
-  m.setLayoutProperty("labels", "visibility", vis(base !== "topo"));
   m.setPaintProperty("topo", "raster-saturation", region ? 0 : -0.75);
   m.setPaintProperty("topo", "raster-opacity", region ? 1 : 0.9);
   const selExpr = mapState.region ? ["==", ["get", "id"], mapState.region]
@@ -1878,28 +1875,24 @@ function openAreaSheet(key) {
     holder));
   show(sorted[0].id);
 }
-const LAGE_BOUNDS = [[9.75, 46.85], [12.95, 47.72]];
+const LAGE_BOUNDS = [[9.8, 46.75], [12.9, 47.75]];
 const lageMap = { map: null, ready: false };
 function initLageMap() {
   if (!window.maplibregl) { put($("#lage-map"), el("p", { class: "status", style: "padding:16px", text: "Die Karte konnte nicht geladen werden. Bitte die Internetverbindung prüfen." })); return; }
-  const carto = kind => ["a", "b", "c", "d"].map(x => `https://${x}.basemaps.cartocdn.com/${kind}/{z}/{x}/{y}.png`);
   const m = new maplibregl.Map({
     container: "lage-map", attributionControl: { compact: true },
     dragPan: false, scrollZoom: false, boxZoom: false, dragRotate: false, keyboard: false, doubleClickZoom: false, touchZoomRotate: false, touchPitch: false, pitchWithRotate: false,
     bounds: LAGE_BOUNDS, fitBoundsOptions: { padding: 6 },
     style: { version: 8,
       sources: {
-        base: { type: "raster", tiles: carto("light_nolabels"), tileSize: 256, attribution: '© <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>, © OpenStreetMap-Mitwirkende · Gebiete: EAWS' },
-        hill: { type: "raster-dem", tiles: [DEM_URL], encoding: "terrarium", tileSize: 256, maxzoom: 10 },
-        labels: { type: "raster", tiles: carto("light_only_labels"), tileSize: 256 },
+        hill: { type: "raster-dem", tiles: [DEM_URL], encoding: "terrarium", tileSize: 256, maxzoom: 10, attribution: "Gelände: Terrain Tiles (AWS Open Data) · Gebiete: EAWS" },
         danger: { type: "geojson", data: { type: "FeatureCollection", features: [] } } },
       layers: [
-        { id: "base", type: "raster", source: "base" },
-        { id: "hill", type: "hillshade", source: "hill", paint: { "hillshade-exaggeration": 0.5, "hillshade-shadow-color": "#3d5263" } },
+        { id: "bg", type: "background", paint: { "background-color": "#eef2f5" } },
+        { id: "hill", type: "hillshade", source: "hill", paint: { "hillshade-exaggeration": 0.65, "hillshade-shadow-color": "#3d5263", "hillshade-highlight-color": "#ffffff" } },
         { id: "fill", type: "fill", source: "danger", paint: { "fill-color": levelMatch, "fill-opacity": ["case", ["==", ["get", "level"], 0], 0.3, 0.78] } },
         { id: "line", type: "line", source: "danger", paint: { "line-color": "#ffffff", "line-width": 0.9 } },
-        { id: "sel", type: "line", source: "danger", filter: ["==", ["get", "id"], "-"], paint: { "line-color": "#13283a", "line-width": 3 } },
-        { id: "labels", type: "raster", source: "labels", paint: { "raster-opacity": 0.9 } }] }
+        { id: "sel", type: "line", source: "danger", filter: ["==", ["get", "id"], "-"], paint: { "line-color": "#13283a", "line-width": 3 } }] }
   });
   m.on("load", async () => {
     lageMap.ready = true;
