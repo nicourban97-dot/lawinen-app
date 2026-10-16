@@ -189,7 +189,8 @@ footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line)
 .mchip { font: 700 15px/1.2 var(--font-display); text-transform: uppercase; letter-spacing: .03em; background: var(--surface); color: var(--fg); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line); box-shadow: 0 1px 3px rgba(0,0,0,.18); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .legend { position: absolute; left: 8px; bottom: 36px; z-index: 3; background: color-mix(in srgb, var(--surface) 92%, transparent); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 12px; display: grid; gap: 2px; }
 .sw { display: inline-block; width: 14px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; border: 1px solid rgba(0,0,0,.25); }
-.mmsg { position: absolute; top: 56px; left: 50%; transform: translateX(-50%); z-index: 3; background: var(--fg); color: var(--bg); font-size: 13px; padding: 6px 12px; border-radius: 99px; white-space: nowrap; max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; }
+.mrow { flex: 1 0 100%; display: flex; justify-content: center; pointer-events: none; }
+.mmsg { background: var(--fg); color: var(--bg); font-size: 13px; padding: 6px 12px; border-radius: 99px; max-width: 100%; text-align: center; pointer-events: auto; }
 .map-wrap.full { position: fixed; inset: 0; z-index: 40; height: auto; min-height: 0; border-radius: 0; border: 0; }
 .map-wrap.full .map-bar { top: calc(8px + env(safe-area-inset-top, 0px)); left: max(8px, env(safe-area-inset-left, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); }
 .map-wrap.full .maplibregl-ctrl-bottom-right, .map-wrap.full .maplibregl-ctrl-bottom-left { margin-bottom: env(safe-area-inset-bottom, 0px); }
@@ -242,9 +243,9 @@ html.noscroll, html.noscroll body { overflow: hidden; }
         </div>
         <button type="button" class="mbtn" id="m-filter" hidden>Filter</button>
         <button type="button" class="mbtn" id="m-full" aria-pressed="false">Vollbild</button>
+        <div class="mrow"><div class="mmsg" id="m-msg" role="status" hidden></div></div>
       </div>
       <div class="legend" id="m-legend"></div>
-      <div class="mmsg" id="m-msg" role="status" hidden></div>
     </div>
     <div class="mpanel" id="m-panel"></div>
   </section>
