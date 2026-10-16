@@ -1644,6 +1644,7 @@ async function renderFinder() {
   for (const f of g.features || []) {
     const p = f.properties, st = p.st;
     if (!st || !p.region || !finderAreaOk(p.region)) continue;
+    if (st.asc < 200 || st.len < 1000) continue; // pieces of a route, not a tour of their own
     if (st.max >= finder.steep) { counts.steep++; continue; }
     if (st.asc > finder.asc) { counts.asc++; continue; }
     const pseudo = routePseudoTour(f), ev = evaluateTour(pseudo), r = state.regions.get(p.region);
