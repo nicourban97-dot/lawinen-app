@@ -1,6 +1,3 @@
-2026-10-16T21:24:31.251Z LAWIS: 4883 Ereignisse, im Gebiet 4028
-2026-10-16T21:24:31.253Z Details neu zu laden: 744
-2026-10-16T21:24:47.614Z Details 200/744
-2026-10-16T21:25:04.119Z Details 400/744
-2026-10-16T21:25:21.011Z Details 600/744
-2026-10-16T21:25:32.249Z Geschrieben: 4028 Ereignisse, Details geladen 744, fehlgeschlagen 0
+2026-10-16T21:26:23.933Z LAWIS: 4883 Ereignisse, im Gebiet 4028
+2026-10-16T21:26:23.935Z Details neu zu laden: 0
+2026-10-16T21:26:23.955Z Geschrieben: 4028 Ereignisse, Details geladen 0, fehlgeschlagen 0
