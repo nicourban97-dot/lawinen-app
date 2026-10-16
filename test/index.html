@@ -804,16 +804,16 @@ function historyTable(rows, date) {
     if (!sel && v.HSD24 != null) { hasHS = true; if (v.HSD24 > 0) sumHS += v.HSD24; }
     return el("tr", { class: sel ? "sel" : null },
       el("td", { text: fmtDay(r.day).replace(".,", "") }),
-      el("td", { text: v.HS == null ? "–" : `${num(v.HS)} cm` }),
+      el("td", { text: v.HS == null ? "–" : num(v.HS) }),
       el("td", {}, v.HSD24 == null ? "–" : v.HSD24 >= 0.5 ? el("span", { class: "sn", text: `+${num(v.HSD24)}` }) : num(v.HSD24)),
-      el("td", { text: v.N24 == null ? "–" : `${num(v.N24, 1)} mm` }),
+      el("td", { text: v.N24 == null ? "–" : num(v.N24, 1) }),
       el("td", { text: minmax ? (v.LT_MIN == null ? "–" : `${num(v.LT_MIN)} / ${num(v.LT_MAX)}`) : (v.LT == null ? "–" : num(v.LT)) }),
       el("td", {}, wind(v.WG, v.WR, v.WG_BOE)));
   });
   body.push(el("tr", { class: "sum" }, el("td", { text: "7 Tage" }), el("td"),
-    el("td", {}, hasHS ? el("span", { class: "sn", text: `+${num(sumHS)}` }) : "–"), el("td", { text: hasN ? `${num(sumN, 1)} mm` : "–" }), el("td"), el("td")));
+    el("td", {}, hasHS ? el("span", { class: "sn", text: `+${num(sumHS)}` }) : "–"), el("td", { text: hasN ? num(sumN, 1) : "–" }), el("td"), el("td")));
   return el("div", { class: "tablewrap" }, el("table", { class: "wx" },
-    el("thead", {}, el("tr", {}, ["Tag", "Schnee", "± 24 h", "Nieders.", minmax ? "Temp. 24 h" : "Temp.", "Wind (Böen)"].map(x => el("th", { text: x })))),
+    el("thead", {}, el("tr", {}, ["Tag", "Schnee cm", "± 24 h", "Nieders. mm", minmax ? "Temp. 24 h" : "Temp.", "Wind (Böen)"].map(x => el("th", { text: x })))),
     el("tbody", {}, body)));
 }
 function stationBlock(t, stations, date) {
