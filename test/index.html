@@ -106,6 +106,8 @@ details > summary { cursor: pointer; color: var(--accent); font-weight: 700; }
 /* Lage page */
 .lage-map-wrap { position: relative; height: min(52vh, 460px); min-height: 260px; border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); background: var(--surface-2); }
 #lage-map { position: absolute; inset: 0; }
+.place { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: #13283a; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 2px #fff; pointer-events: none; }
+.place span { width: 5px; height: 5px; border-radius: 50%; background: #13283a; box-shadow: 0 0 0 1.5px #fff; }
 .lage-hint { position: absolute; left: 10px; top: 10px; z-index: 2; background: color-mix(in srgb, var(--surface) 90%, transparent); color: var(--fg); font-size: 14px; padding: 4px 10px; border-radius: 99px; pointer-events: none; }
 .scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
 .scale div { display: grid; gap: 2px; justify-items: center; font-size: 12px; color: var(--muted); }
@@ -1889,12 +1891,19 @@ function initLageMap() {
         { id: "line", type: "line", source: "danger", paint: { "line-color": "#ffffff", "line-width": 0.9 } },
         { id: "sel", type: "line", source: "danger", filter: ["==", ["get", "id"], "-"], paint: { "line-color": "#13283a", "line-width": 3 } }] }
   });
-  m.on("load", async () => {
+  loadRegionShapes();
+  // Fill in the colours as soon as the style is there; "load" also waits for every relief tile.
+  const onStyle = async () => {
+    if (lageMap.ready) return;
     lageMap.ready = true;
     const attrib = m.getContainer().querySelector(".maplibregl-ctrl-attrib");
     if (attrib) attrib.classList.remove("maplibregl-compact-show");
     await loadRegionShapes(); updateLageMap();
-  });
+  };
+  m.once("style.load", onStyle); m.once("load", onStyle);
+  // A few places for orientation, as plain labels (the map has no text layer).
+  for (const [name, lon, lat] of [["Oberstdorf", 10.28, 47.41], ["Garmisch", 11.10, 47.49], ["Innsbruck", 11.39, 47.27], ["Landeck", 10.57, 47.14], ["Kitzbühel", 12.39, 47.45], ["Bludenz", 9.82, 47.15]])
+    new maplibregl.Marker({ element: el("div", { class: "place", "aria-hidden": "true" }, el("span"), name), anchor: "left" }).setLngLat([lon, lat]).addTo(m);
   m.on("click", e => { const f = m.queryRenderedFeatures(e.point, { layers: ["fill"] })[0]; if (f) openRegionSheet(f.properties.id); });
   m.on("mousemove", e => { m.getCanvas().style.cursor = m.queryRenderedFeatures(e.point, { layers: ["fill"] }).length ? "pointer" : ""; });
   if (window.ResizeObserver) new ResizeObserver(() => { m.resize(); m.fitBounds(LAGE_BOUNDS, { padding: 6, duration: 0 }); }).observe($("#lage-map"));
