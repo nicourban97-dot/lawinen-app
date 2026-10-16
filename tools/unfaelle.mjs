@@ -39,7 +39,8 @@ try {
   say(`LAWIS: ${list.length} Ereignisse, im Gebiet ${inArea.length}`);
   const feats = [], text = {};
   let fetched = 0, failed = 0;
-  const todo = inArea.filter(x => { const k = known.get(x.incident_id); return !k || k.properties.rev !== x.revision || !(x.incident_id in oldText); });
+  // Only new or revised incidents; many have no description at all, those are not asked for again.
+  const todo = inArea.filter(x => { const k = known.get(x.incident_id); return !k || k.properties.rev !== x.revision; });
   say(`Details neu zu laden: ${todo.length}`);
   const details = new Map();
   // Four requests at a time, a short pause in between: the API serves a public website.
