@@ -147,7 +147,7 @@ details > summary { cursor: pointer; color: var(--accent); font-size: 14px; font
 table.wx { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
 table.wx th, table.wx td { padding: 5px 8px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
 table.wx th:first-child, table.wx td:first-child { text-align: left; }
-table.wx th { font-weight: 600; color: var(--muted); background: var(--surface-2); }
+table.wx th { font-weight: 600; color: var(--muted); background: var(--surface-2); white-space: normal; vertical-align: bottom; line-height: 1.25; }
 table.wx tr:last-child td { border-bottom: 0; }
 table.wx tr.sel td { font-weight: 600; background: var(--surface-2); }
 table.wx tr.sum td { font-weight: 600; border-top: 2px solid var(--line); }
@@ -243,16 +243,16 @@ footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line)
     Lageberichte: <a href="https://www.lawinenwarndienst.bayern.de" target="_blank" rel="noopener">Lawinenwarndienst Bayern</a>,
     <a href="https://avalanche.report" target="_blank" rel="noopener">Lawinenwarndienst Tirol (avalanche.report)</a>,
     <a href="https://www.vorarlberg.at/lawinenbericht" target="_blank" rel="noopener">Lawinenwarndienst Vorarlberg</a>.
-    Messstationen: Lawinenwarndienst Tirol und die jeweils genannten Betreiber.
+    Messstationen: Lawinenwarndienste Tirol, Bayern und Vorarlberg über avalanche.report und lawinen-warnung.eu, dazu die jeweils genannten Betreiber.
     Wetter: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (Modelldaten, nicht-kommerzielle Nutzung).
-    Diese App ist eine Entscheidungshilfe. Sie ersetzt nicht den vollständigen Lagebericht und nicht die Beurteilung im Gelände. Version 0.2.
+    Diese App ist eine Entscheidungshilfe. Sie ersetzt nicht den vollständigen Lagebericht und nicht die Beurteilung im Gelände. Version 0.2.1.
   </footer>
 </main>
 </div>
 
 <script>
 "use strict";
-const VERSION = "0.2";
+const VERSION = "0.2.1";
 const LEVELS = { no_snow: 0, no_rating: 0, low: 1, moderate: 2, considerable: 3, high: 4, very_high: 5 };
 const LEVEL_NAME = ["keine Angabe", "gering", "mäßig", "erheblich", "groß", "sehr groß"];
 const PROBLEM = {
@@ -283,7 +283,12 @@ const PROVIDERS = [
   { id: "TI", name: "Tirol", url: d => `https://static.avalanche.report/bulletins/${d}/${d}_EUREGIO_de_CAAMLv6.json`,
     page: d => `https://avalanche.report/bulletin/${d}` }
 ];
-const STATIONS_URL = "https://static.avalanche.report/weather_stations/stations.geojson";
+// Two station networks: avalanche.report (Tirol, South Tyrol, Trentino) and lawinen-warnung.eu (Bavaria, Vorarlberg, rest of Austria, Slovenia).
+// Both keep hourly snapshots during the season, file names in UTC: <YYYY-MM-DD>_<HH>-00_stations.geojson.
+const STATION_SOURCES = [
+  { id: "TI", base: "https://static.avalanche.report/weather_stations/" },
+  { id: "LW", base: "https://static.lawinen-warnung.eu/weather_stations/" }
+];
 const stationChart = (plot, w) => `https://wiski.tirol.gv.at/lawine/grafiken/${w}/standard/woche/${encodeURIComponent(plot)}.png`;
 
 // Areas of the first version. Regions are the micro-regions of the warning services.
@@ -444,16 +449,58 @@ function tourWeather(t, date) {
   }
   return state.tourWx.get(key);
 }
+// Bring both networks to one shape: °C, cm, mm, km/h, %.
+function normStation(f, src) {
+  const p = f.properties || {}, c = (f.geometry && f.geometry.coordinates) || [];
+  const base = { src, name: p.name, lon: c[0], lat: c[1], elev: c[2] };
+  if (src === "TI") return { ...base, id: f.id, key: f.id, operator: p.operator || "", plot: p.plot || null, region: p["LWD-Region"] || "",
+    v: { LT: p.LT, LT_MIN: p.LT_MIN, LT_MAX: p.LT_MAX, HS: p.HS, HSD24: p.HSD24, N24: p.N24, WG: p.WG, WG_BOE: p.WG_BOE, WR: p.WR, RH: p.RH, date: p.date } };
+  const k = (x, f2) => x == null ? null : x * f2;
+  return { ...base, id: "LW-" + (p.shortName || f.id), key: p.shortName || p.name, operator: p.operator || "", plot: null, region: p.microRegionID || "",
+    v: { LT: p.TA == null ? null : (p.TA > 150 ? p.TA - 273.15 : p.TA), HS: k(p.HS, 100), HSD24: k(p.HSD_24, 100), N24: p.PSUM_24,
+      WG: k(p.VW, 3.6), WG_BOE: k(p.VW_MAX, 3.6), WR: p.DW, RH: p.RH == null ? null : (p.RH <= 1.5 ? p.RH * 100 : p.RH),
+      date: p.date ? p.date.replace(" ", "T") : null } };
+}
+const hasValues = s => ["LT", "HS", "WG", "N24"].some(k => s.v[k] != null);
 async function loadStations() {
   if (state.stations) return state.stations;
-  try {
-    const g = await getJSON(STATIONS_URL);
-    state.stations = (g.features || []).map(f => ({
-      id: f.id, name: f.properties.name, operator: f.properties.operator, plot: f.properties.plot,
-      region: f.properties["LWD-Region"], lon: f.geometry.coordinates[0], lat: f.geometry.coordinates[1], elev: f.geometry.coordinates[2], p: f.properties
-    }));
-  } catch (e) { state.stations = []; }
-  return state.stations;
+  const [ti, lw] = await Promise.allSettled(STATION_SOURCES.map(x => getJSON(x.base + "stations.geojson")));
+  const a = ti.status === "fulfilled" ? (ti.value.features || []).map(f => normStation(f, "TI")) : [];
+  const b = lw.status === "fulfilled" ? (lw.value.features || []).map(f => normStation(f, "LW")) : [];
+  const out = [];
+  for (const s of [...a, ...b]) {
+    if (s.lat == null || s.lon == null || !hasValues(s)) continue;
+    // lawinen-warnung.eu also lists GeoSphere stations that avalanche.report already has with a chart: keep those.
+    if (s.src === "LW" && a.some(x => hasValues(x) && distKm(x, s) < 0.5)) continue;
+    // Some sites are listed twice (wind mast and snow field at one spot): merge them.
+    const twin = out.find(x => x.src === s.src && distKm(x, s) < 0.05);
+    if (twin) { for (const [k, val] of Object.entries(s.v)) if (twin.v[k] == null) twin.v[k] = val; continue; }
+    out.push(s);
+  }
+  state.stations = out;
+  return out;
+}
+const snapCache = new Map();
+function snapshot(src, stamp) {
+  const url = STATION_SOURCES.find(x => x.id === src).base + `${stamp}_stations.geojson`;
+  if (!snapCache.has(url)) {
+    const pr = getJSON(url).then(g => (g.features || []).map(f => normStation(f, src)));
+    pr.catch(() => snapCache.delete(url));
+    snapCache.set(url, pr);
+  }
+  return snapCache.get(url);
+}
+// Measured values of the 7 days before the chosen day plus the day itself, read at 05:00 UTC (6 Uhr Winterzeit).
+async function stationHistory(st, date) {
+  const today = ymd(new Date()), end = date > today ? today : date, days = [];
+  for (let i = 7; i >= 0; i--) days.push(addDays(end, -i));
+  return Promise.all(days.map(async d => {
+    try {
+      const list = await snapshot(st.src, `${d}_05-00`);
+      const hit = list.find(x => x.key === st.key) || list.find(x => x.name === st.name && distKm(x, st) < 0.2);
+      return { day: d, v: hit ? hit.v : null };
+    } catch (e) { return { day: d, v: null }; }
+  }));
 }
 
 // ---------- logic ----------
@@ -746,24 +793,47 @@ function weekTable(w, date) {
     el("thead", {}, el("tr", {}, ["Tag", "Nieders.", "Schnee", "Temp. °C", "Wind (Böen)"].map(x => el("th", { text: x })))),
     el("tbody", {}, rows)));
 }
-function stationBlock(t, stations) {
+function historyTable(rows, date) {
+  const any = rows.some(r => r.v && hasValues({ v: r.v }));
+  if (!any) return el("p", { class: "status", text: "Für diese Tage gibt es kein Archiv der Messwerte. Die Messnetze speichern stündliche Werte nur während der Wintersaison. Aus dem letzten Winter reicht das Archiv für Tirol vom 18.01. bis 12.06.2026, für Bayern und Vorarlberg vom 02.03. bis 17.06.2026." });
+  const minmax = rows.some(r => r.v && r.v.LT_MIN != null);
+  let sumN = 0, sumHS = 0, hasN = false, hasHS = false;
+  const body = rows.map(r => {
+    const v = r.v || {}, sel = r.day === date;
+    if (!sel && v.N24 != null) { sumN += v.N24; hasN = true; }
+    if (!sel && v.HSD24 != null) { hasHS = true; if (v.HSD24 > 0) sumHS += v.HSD24; }
+    return el("tr", { class: sel ? "sel" : null },
+      el("td", { text: fmtDay(r.day).replace(".,", "") }),
+      el("td", { text: v.HS == null ? "–" : num(v.HS) }),
+      el("td", {}, v.HSD24 == null ? "–" : v.HSD24 >= 0.5 ? el("span", { class: "sn", text: `+${num(v.HSD24)}` }) : num(v.HSD24)),
+      el("td", { text: v.N24 == null ? "–" : num(v.N24, 1) }),
+      el("td", { text: minmax ? (v.LT_MIN == null ? "–" : `${num(v.LT_MIN)} / ${num(v.LT_MAX)}`) : (v.LT == null ? "–" : num(v.LT)) }),
+      el("td", {}, wind(v.WG, v.WR, v.WG_BOE)));
+  });
+  body.push(el("tr", { class: "sum" }, el("td", { text: "7 Tage" }), el("td"),
+    el("td", {}, hasHS ? el("span", { class: "sn", text: `+${num(sumHS)}` }) : "–"), el("td", { text: hasN ? num(sumN, 1) : "–" }), el("td"), el("td")));
+  return el("div", { class: "tablewrap" }, el("table", { class: "wx" },
+    el("thead", {}, el("tr", {}, ["Tag", "Schnee cm", "± 24 h", "Nieders. mm", minmax ? "Temp. 24 h" : "Temp.", "Wind (Böen)"].map(x => el("th", { text: x })))),
+    el("tbody", {}, body)));
+}
+function stationBlock(t, stations, date) {
   if (!stations.length) return el("p", { class: "status", text: "Die Messstationen konnten nicht geladen werden." });
   const here = { lat: t.lat, lon: t.lon };
-  const near = stations.filter(s => s.plot && (s.p.LT != null || s.p.HS != null || s.p.WG != null))
-    .map(s => ({ ...s, km: distKm(here, s) })).sort((a, b) => a.km - b.km).slice(0, 4);
-  if (!near.length) return el("p", { class: "status", text: "Keine Messstation gefunden." });
+  const near = stations.map(s => ({ ...s, km: distKm(here, s) })).sort((a, b) => a.km - b.km).slice(0, 5);
   const box = el("div", { class: "panel" });
   const draw = () => {
-    const sel = near.find(s => s.id === state.stationSel[t.id]) || near[0], p = sel.p;
+    const sel = near.find(s => s.id === state.stationSel[t.id]) || near[0], p = sel.v;
+    const ageH = p.date ? (Date.now() - new Date(p.date).getTime()) / 36e5 : null;
     const val = (k, label, unit, d = 0) => p[k] == null ? null : el("div", { class: "kpi" }, el("div", { class: "k", text: label }), el("div", { class: "v", text: `${num(p[k], d)} ${unit}` }));
-    put(box, 
-      el("h3", { text: "Nächste Messstation" }),
+    const hist = el("div", {}, el("p", { class: "status", text: "Lade Messwerte …" }));
+    put(box,
+      el("h3", { text: "Messstationen in der Nähe" }),
       el("div", { class: "stationlist", role: "group", "aria-label": "Messstation wählen" }, near.map(s =>
         el("button", { type: "button", "aria-pressed": String(s === sel), onclick: () => { state.stationSel[t.id] = s.id; draw(); },
           text: `${s.name} · ${Math.round(s.elev)} m · ${num(s.km, s.km < 10 ? 1 : 0)} km` }))),
-      el("div", { class: "status", text: `${sel.operator || ""}${sel.region ? " · " + sel.region : ""}${p.date ? " · gemessen " + fmtTime(p.date) : ""}. Aktuelle Werte, unabhängig vom gewählten Datum.` }),
-      near[0].km > 15 || !t.region.startsWith("AT-07") ? el("div", { class: "note", text:
-        `Eingebunden sind bisher nur die Stationen aus Tirol, Südtirol und dem Trentino. Die nächste liegt ${num(near[0].km)} km von der Tour entfernt. Messstationen aus Bayern und Vorarlberg kommen in einer späteren Version.` }) : null,
+      el("div", { class: "status", text: [sel.operator, sel.region, p.date ? "gemessen " + fmtTime(p.date) : null].filter(Boolean).join(" · ") + ". Aktuelle Werte, unabhängig vom gewählten Datum." }),
+      near[0].km > 15 ? el("div", { class: "note", text: `Die nächste Station liegt ${num(near[0].km)} km von der Tour entfernt.` }) : null,
+      ageH != null && ageH > 6 ? el("div", { class: "note warn", text: `Die letzte Messung dieser Station ist vom ${fmtTime(p.date)}. Außerhalb der Wintersaison liefern manche Messnetze keine neuen Werte.` }) : null,
       el("div", { class: "kpis" },
         val("LT", "Lufttemperatur", "°C", 1),
         p.LT_MIN != null ? el("div", { class: "kpi" }, el("div", { class: "k", text: "Temp. 24 h" }), el("div", { class: "v", text: `${num(p.LT_MIN, 1)} / ${num(p.LT_MAX, 1)} °C` }), el("div", { class: "s", text: "min / max" })) : null,
@@ -772,11 +842,16 @@ function stationBlock(t, stations) {
         val("N24", "Niederschlag 24 h", "mm", 1),
         p.WG != null ? el("div", { class: "kpi" }, el("div", { class: "k", text: "Wind" }), el("div", { class: "v" }, wind(p.WG, p.WR)), p.WG_BOE != null ? el("div", { class: "s", text: `Böen ${num(p.WG_BOE)} km/h` }) : null) : null,
         val("RH", "Luftfeuchte", "%")),
-      el("div", {}, el("div", { class: "status", text: "Messwerte der letzten 7 Tage (Lawinenwarndienst Tirol): Schneehöhe und Niederschlag, Temperatur, Strahlung, Wind und Windrichtung. Tippen für die große Ansicht." }),
+      el("h3", { text: "Gemessen: die 7 Tage davor" }),
+      el("p", { class: "status", text: "Echte Messwerte dieser Station, jeweils um 6 Uhr (Winterzeit) mit den Summen der 24 Stunden davor. Die letzte Zeile ist der gewählte Tag. In der Summe zählt beim Schnee nur der Zuwachs." }),
+      hist,
+      sel.plot ? el("div", {}, el("div", { class: "status", text: "Wochengrafik des Lawinenwarndiensts Tirol, aktuelle Woche: Schneehöhe und Niederschlag, Temperatur, Strahlung, Wind und Windrichtung. Tippen für die große Ansicht." }),
         el("a", { href: stationChart(sel.plot, 1100), target: "_blank", rel: "noopener" },
           el("img", { class: "chart", src: stationChart(sel.plot, 800), alt: `Messwerte der letzten 7 Tage, Station ${sel.name}`, loading: "lazy",
-            onerror: e => e.target.replaceWith(el("p", { class: "status", text: "Für diese Station gibt es keine Wochengrafik." })) })))
+            onerror: e => e.target.replaceWith(el("p", { class: "status", text: "Für diese Station gibt es keine Wochengrafik." })) }))) : null
     );
+    const token = sel.id + "|" + date; box.dataset.hist = token;
+    stationHistory(sel, date).then(rows => { if (box.dataset.hist === token) put(hist, historyTable(rows, date > ymd(new Date()) ? ymd(new Date()) : date)); });
   };
   draw();
   return box;
@@ -819,7 +894,7 @@ async function renderTourDetail() {
   } else {
     put(wxBox, el("h3", { text: "Wetter auf dem Gipfel" }), el("p", { class: "status", text: "Wetter konnte nicht geladen werden." }));
   }
-  put(stBox, stationBlock(t, st.status === "fulfilled" ? st.value : []));
+  put(stBox, stationBlock(t, st.status === "fulfilled" ? st.value : [], date));
 }
 function showTour(id) {
   state.tourSel = id; store.set("lawinenapp.toursel.v1", id);
