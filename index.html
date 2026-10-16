@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="de">
 <head>
 <meta charset="utf-8">
@@ -231,6 +231,11 @@ details > summary { cursor: pointer; color: var(--accent); font-weight: 700; }
 .wxhints { display: grid; gap: 8px; }
 .accpop .maplibregl-popup-content { max-height: 52vh; overflow-y: auto; }
 .map-wrap.popup-open .legend { display: none; }
+.mtip { position: absolute; left: max(10px, env(safe-area-inset-left, 0px)); right: max(10px, env(safe-area-inset-right, 0px)); bottom: 34px; z-index: 4; max-width: 420px;
+  background: var(--surface); color: var(--fg); border-radius: 14px; padding: 12px 14px; box-shadow: var(--shadow); display: grid; gap: 8px; font-size: 14px; }
+.mtip ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.mtip li .sw { margin-right: 2px; }
+.mtip .btn { justify-self: start; padding: 7px 14px; }
 .accpop .popup p { margin: 2px 0; font-size: 14px; }
 .riskbox details > summary { font-size: 14px; }
 .riskbox .popup { font-size: 14px; padding: 6px 0 2px; }
@@ -342,6 +347,16 @@ img.chart { width: 100%; height: auto; display: block; border-radius: 8px; backg
           </div>
         </div>
         <div class="legend" id="m-legend" title="Antippen zum Ein- und Ausklappen"></div>
+        <div class="mtip" id="m-tip" role="note" hidden>
+          <b>So liest du die Karte</b>
+          <ul>
+            <li><span class="sw risk-sw" style="background:#ffd400"></span><span class="sw risk-sw" style="background:#ff8a00"></span><span class="sw risk-sw" style="background:#d7263d"></span> Gefahrenzonen: steile Hänge nach Auslösewahrscheinlichkeit laut heutigem Lagebericht.</li>
+            <li><span class="sw line-sw"></span> Tour antippen: Gefahrenabschnitte, Höhenprofil und Unfälle in der Nähe.</li>
+            <li><span class="sw acc-sw" style="background:#6a040f"></span> Punkte sind Lawinenereignisse. Antippen für den Hergang.</li>
+            <li>Ebenen oben ein- und ausschalten, weitere unter „Mehr“.</li>
+          </ul>
+          <button type="button" class="btn" id="m-tip-ok">Verstanden</button>
+        </div>
       </div>
       <div class="mpanel" id="m-panel" hidden></div>
     </section>
@@ -455,14 +470,14 @@ img.chart { width: 100%; height: auto; display: block; border-radius: 8px; backg
     Karten: OpenTopoMap und OpenStreetMap-Mitwirkende, Satellitenbild Sentinel-2 cloudless von EOX (enthält veränderte Copernicus-Sentinel-Daten 2020).
     Gelände: Terrain Tiles (AWS Open Data). Teilgebiete: EAWS. Skitouren und Wildschutzgebiete: © OpenStreetMap-Mitwirkende (ODbL).
     Lawinenereignisse: <a href="https://lawis.at/incident/" target="_blank" rel="noopener">LAWIS</a> (Lawinenwarndienste Österreichs, Bayern und Südtirol; LAWIS, Universität Wien), täglich aktualisiert während der Saison.</p>
-    <p>Diese App ist eine Entscheidungshilfe. Sie ersetzt nicht den vollständigen Lagebericht und nicht die Beurteilung im Gelände. Version 0.7.</p>
+    <p>Diese App ist eine Entscheidungshilfe. Sie ersetzt nicht den vollständigen Lagebericht und nicht die Beurteilung im Gelände. Version 0.7.1.</p>
   </div>
 </div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script>
 "use strict";
-const VERSION = "0.7";
+const VERSION = "0.7.1";
 const LEVELS = { no_snow: 0, no_rating: 0, low: 1, moderate: 2, considerable: 3, high: 4, very_high: 5 };
 const LEVEL_NAME = ["keine Angabe", "gering", "mäßig", "erheblich", "groß", "sehr groß"];
 const PROBLEM = {
@@ -762,13 +777,14 @@ function regionArea(id) {
 }
 
 // ---------- release risk (Auslöserisiko) ----------
-// Follows Werner Munter's reduction method: danger potential 2^level (gering 2, mäßig 4, erheblich 8, groß 16)
-// divided by reduction factors. Steepness of the slope: 40° and more 1, 35–39° 2, 30–34° 4, below 30° not rated.
-// A slope outside the aspects and elevations of the bulletin's avalanche problems gets factor 3, inside 1.
+// Follows Werner Munter's reduction method (3x3 Lawinen, chapter 10): danger potential 2^level (gering 2, mäßig 4,
+// erheblich 8, groß 16) divided by reduction factors. Steepest slope 35–39° factor 2, 30–34° factor 4, 40° and more none.
+// Outside the aspects and elevations of the bulletin's avalanche problems one level lower (one-level rule, as used by
+// Skitourenguru and confirmed by Winkler et al. 2021), i.e. factor 2.
 // Group behaviour from the settings (small group 2, small group with spacing 3, larger group with spacing 2).
 // Residual risk up to 1 is what Munter calls accepted; the classes above are the app's own steps.
 const GROUP_RF = { none: 1, small: 2, smallgap: 3, biggap: 2 };
-const OUTSIDE_RF = 3;
+const OUTSIDE_RF = 2;
 const RISK_NAME = ["gering", "erhöht", "hoch", "sehr hoch"];
 const RISK_COLORS = ["#7cc46b", "#ffd400", "#ff8a00", "#d7263d"];
 const RISK_RGB = [[124, 196, 107], [255, 212, 0], [255, 128, 0], [215, 38, 61]];
@@ -872,11 +888,11 @@ function riskGeoJSON(tr) {
 }
 function methodText() {
   return [
-    el("p", {}, "Die App rechnet nach der Reduktionsmethode von Werner Munter. Sie liefert eine relative Einschätzung, keine Wahrscheinlichkeit in Prozent: Dafür gibt es keine belastbare Datengrundlage."),
+    el("p", {}, "Die App rechnet nach der Reduktionsmethode von Werner Munter (3×3 Lawinen, Kapitel 10). Sie liefert eine relative Einschätzung, keine Wahrscheinlichkeit in Prozent: Dafür gibt es keine belastbare Datengrundlage."),
     el("ul", { class: "notes" },
-      el("li", { text: "Gefahrenpotential aus der Gefahrenstufe des Lageberichts für die jeweilige Höhe: gering 2, mäßig 4, erheblich 8, groß 16, sehr groß 32." }),
-      el("li", { text: "Geteilt durch die Steilheit an der Stelle: ab 40° Faktor 1, 35 bis 39° Faktor 2, 30 bis 34° Faktor 4. Unter 30° wird nicht bewertet." }),
-      el("li", { text: "Liegt die Stelle außerhalb der Expositionen und Höhen der Lawinenprobleme im Bericht, Faktor 3, sonst 1. Die Waldgrenze zählt vorsichtig als 1600 m (oberhalb) und 2000 m (unterhalb)." }),
+      el("li", { text: "Gefahrenpotential aus der Gefahrenstufe des Lageberichts für die jeweilige Höhe: 2 hoch Stufe, also gering 2, mäßig 4, erheblich 8, groß 16, sehr groß 32." }),
+      el("li", { text: "Geteilt durch die Steilheit an der Stelle, wie bei Munter: 35 bis 39° Faktor 2, 30 bis 34° Faktor 4, ab 40° keine Reduktion. Unter 30° wird nicht bewertet." }),
+      el("li", { text: "Liegt die Stelle außerhalb der Expositionen und Höhen der Lawinenprobleme im Bericht, zählt eine Stufe weniger (Einstufenregel, wie bei Skitourenguru, bestätigt von Winkler et al. 2021), also Faktor 2. Die Waldgrenze zählt vorsichtig als 1600 m (oberhalb) und 2000 m (unterhalb)." }),
       el("li", { text: "Gruppe laut Einstellung: kleine Gruppe Faktor 2, kleine Gruppe mit Entlastungsabständen 3, größere Gruppe mit Abständen 2, sonst 1." }),
       el("li", { text: "Ergebnis ist das Restrisiko. Bis 1 gilt es nach Munter als akzeptiert (gering), über 1 erhöht, über 2 hoch, über 4 sehr hoch." })),
     el("p", {}, "Gerechnet wird entlang der Spur alle 30 m mit dem Geländemodell (rund 30 m Auflösung). Kurze Steilstufen werden unterschätzt, Hänge oberhalb der Spur und Auslaufbereiche zählen nicht mit. Die Ebene Gefahrenzonen zeigt sie auf der Karte. Die Einschätzung ist eine Entscheidungshilfe, keine Freigabe.")
@@ -1703,6 +1719,8 @@ async function showRoute(feature) {
   m.setFilter("route-sel", ["==", ["get", "osm"], feature.properties.osm]);
   m.setFilter("route-sel-casing", ["==", ["get", "osm"], feature.properties.osm]);
   drawRisk(null);
+  // The whole track in view, so it can be read once the sheet is closed.
+  m.fitBounds(bboxOf(feature.geometry), { padding: { top: 120, bottom: 60, left: 40, right: 50 }, maxZoom: 14, duration: 500 });
   const holder = el("div", { style: "display:grid;gap:12px" });
   openSheet(routeName(feature.properties), holder, null, "route");
   put(holder, routePanel());
@@ -1747,12 +1765,12 @@ function routePanel() {
   return el("div", { class: "panel" }, head,
     el("div", { class: "top" }, levelDot(ev.level), el("span", { text: pseudo.region ? regionLabel(pseudo.region) : "außerhalb der Teilgebiete" }), pseudo.region ? tourBadge(ev) : null),
     ev.notes.length ? el("ul", { class: "notes" }, ev.notes.map(n => el("li", { text: n }))) : null,
+    riskBlock(mapState.route.tr, mapState.route.near),
     el("div", { class: "kpis" },
       kpi("Länge", `${num(info.length / 1000, 1)} km`, "laut Karte, alle Teilstücke"),
       kpi("Höhe", `${Math.round(info.low.e)} – ${Math.round(info.top.e)} m`, `rund ${Math.round(info.ascent / 10) * 10} Hm im Aufstieg`),
       kpi("Steilste Stelle", `${Math.round(info.maxS)}°`, "aus dem Geländemodell"),
       kpi("Steile Expositionen", info.aspects.length ? info.aspects.map(a => ASPECT_DE[a]).join(", ") : "–", "Abschnitte ab 30°")),
-    riskBlock(mapState.route.tr, mapState.route.near),
     steepTxt ? el("p", { class: "status", text: `Strecke in steilem Gelände: ${steepTxt}.` }) : el("p", { class: "status", text: "Laut Geländemodell kein Abschnitt steiler als 30°." }),
     profileSvg(info.profile, mapState.route.tr),
     p.description ? el("p", { text: p.description }) : null,
@@ -1919,7 +1937,13 @@ function refreshHazard() {
 }
 
 // --- map setup ---
-function showMapMsg(text) { const m = $("#m-msg"); m.textContent = text || ""; m.hidden = !text; }
+// A message with a zoom target becomes a button that zooms in at the map centre.
+function showMapMsg(text, zoomTo) {
+  const m = $("#m-msg"); m.textContent = text || ""; m.hidden = !text;
+  m.dataset.zoom = zoomTo || "";
+  m.style.cursor = zoomTo ? "pointer" : "";
+  m.setAttribute("role", zoomTo ? "button" : "status");
+}
 function initMap() {
   if (!window.maplibregl) { showMapMsg("Die Karte konnte nicht geladen werden. Bitte die Internetverbindung prüfen."); return; }
   maplibregl.addProtocol("slope", async params => {
@@ -2085,8 +2109,8 @@ function applyMode() {
 function updateZoomHint() {
   const m = mapState.map; if (!m) return;
   const z = m.getZoom(), f = mapState.filter;
-  if (f.hazard && z < HAZARD_MINZOOM - 0.01) showMapMsg(state.regions.size ? "Für die Gefahrenzonen näher heranzoomen." : "");
-  else if (f.slope && z < SLOPE_MINZOOM - 0.01) showMapMsg("Für die Hangneigung näher heranzoomen.");
+  if (f.hazard && z < HAZARD_MINZOOM - 0.01) showMapMsg(state.regions.size ? "Gefahrenzonen zeigen: hier tippen zum Hineinzoomen" : "", HAZARD_MINZOOM + 0.6);
+  else if (f.slope && z < SLOPE_MINZOOM - 0.01) showMapMsg("Hangneigung: antippen zum Hineinzoomen", SLOPE_MINZOOM + 0.3);
   else showMapMsg(f.hazard && !state.regions.size && mapState.mode === "region" ? "Ohne Lagebericht keine Gefahrenzonen." : "");
 }
 const QUICK = [["hazard", "Gefahrenzonen"], ["routes", "Touren"], ["acc", "Unfälle"], ["slope", "Hangneigung"], ["snow", "Schnee"], ["wild", "Wildschutz"]];
@@ -2180,6 +2204,7 @@ async function selectTourLine(id) {
   const t = state.tours.find(x => x.id === id), g = t && tourGeom(t), m = mapState.map; if (!g || !m) return;
   clearSelection(); mapState.tourSelId = id;
   m.setFilter("tourline-sel", ["==", ["get", "id"], id]);
+  m.fitBounds(bboxOf(g), { padding: { top: 120, bottom: 60, left: 40, right: 50 }, maxZoom: 14, duration: 500 });
   const holder = el("div", { style: "display:grid;gap:12px" });
   const draw = (tr, near, info) => {
     const ev = evaluateTour(t);
@@ -2734,6 +2759,10 @@ $("#m-title").addEventListener("click", () => mapState.region && openRegionSheet
 put($("#m-region"), el("option", { value: "all", text: "Ganzer Bereich" }), AREAS.map(a => el("option", { value: a.key, text: a.name })));
 $("#m-region").addEventListener("change", e => selectArea(e.target.value));
 $("#m-legend").addEventListener("click", () => $("#m-legend").classList.toggle("mini"));
+$("#m-msg").addEventListener("click", () => { const z = Number($("#m-msg").dataset.zoom); if (z && mapState.map) mapState.map.easeTo({ zoom: z, duration: 600 }); });
+// One short explanation the first time the map opens.
+if (!store.get("lawinenapp.maptip.v1", false)) $("#m-tip").hidden = false;
+$("#m-tip-ok").addEventListener("click", () => { $("#m-tip").hidden = true; store.set("lawinenapp.maptip.v1", true); });
 if (window.matchMedia("(max-width: 520px)").matches) $("#m-legend").classList.add("mini");
 $("#m-2d").addEventListener("click", () => set3D(false));
 $("#m-3d").addEventListener("click", () => set3D(true));
