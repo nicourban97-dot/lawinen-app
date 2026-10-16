@@ -172,6 +172,7 @@ img.chart { width: 100%; height: auto; display: block; border-radius: 6px; backg
 form.add { display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
 form.add .row { display: flex; flex-wrap: wrap; gap: 10px; }
 form.add label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+form.add label.check { display: flex; gap: 6px; align-items: center; color: var(--fg); font-size: 14px; }
 .aspects { display: flex; flex-wrap: wrap; gap: 6px; }
 .aspects label { display: flex; gap: 4px; align-items: center; color: var(--fg); font: 500 13px var(--font-mono); }
 footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
@@ -260,6 +261,24 @@ a.btn.ghost { color: var(--accent); background: transparent; }
     </div>
     <div class="mpanel" id="m-panel"></div>
   </section>
+  <section id="finder-sec">
+    <h2>Tourenvorschläge</h2>
+    <p class="status">Skitouren aus OpenStreetMap, bewertet nach dem Lagebericht des Teilgebiets am höchsten Punkt. Ab Stufe 4 gibt es keine Vorschläge, ab Stufe 3 eine Warnung. Eine Entscheidungshilfe, keine Freigabe.</p>
+    <form class="add" id="finder">
+      <div class="row">
+        <label>Gebiet<select id="f-area"></select></label>
+        <label>Steilste Stelle<select id="f-steep"><option value="90">egal</option><option value="40">unter 40°</option><option value="35">unter 35°</option><option value="30">unter 30°</option></select></label>
+        <label>Höhenmeter bis<select id="f-asc"><option value="99999">egal</option><option value="500">500 Hm</option><option value="800">800 Hm</option><option value="1000">1000 Hm</option><option value="1200">1200 Hm</option><option value="1500">1500 Hm</option></select></label>
+        <label>Sortieren nach<select id="f-sort"><option value="snow">Neuschnee</option><option value="asc">Höhenmetern</option><option value="name">Name</option></select></label>
+      </div>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="f-avoid"> Routen durch Gefahrenstellen laut Bericht ausblenden</label>
+        <label class="check"><input type="checkbox" id="f-l3"> Gebiete mit Stufe 3 einbeziehen</label>
+      </div>
+    </form>
+    <div class="status" id="f-sum" role="status"></div>
+    <div class="tours" id="f-list"></div>
+  </section>
   <section id="powder" hidden></section>
   <section>
     <h2>Lawinenlage</h2>
@@ -311,7 +330,7 @@ a.btn.ghost { color: var(--accent); background: transparent; }
     <a href="https://www.vorarlberg.at/lawinenbericht" target="_blank" rel="noopener">Lawinenwarndienst Vorarlberg</a>.
     Messstationen: Lawinenwarndienste Tirol, Bayern und Vorarlberg über avalanche.report und lawinen-warnung.eu, dazu die jeweils genannten Betreiber.
     Wetter: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (Modelldaten, nicht-kommerzielle Nutzung). Karte: OpenTopoMap und OpenStreetMap-Mitwirkende, Gelände: Terrain Tiles (AWS Open Data), Teilgebiete: EAWS. Skitouren und Wildschutzgebiete: © OpenStreetMap-Mitwirkende (ODbL).
-    Diese App ist eine Entscheidungshilfe. Sie ersetzt nicht den vollständigen Lagebericht und nicht die Beurteilung im Gelände. Version 0.4.
+    Diese App ist eine Entscheidungshilfe. Sie ersetzt nicht den vollständigen Lagebericht und nicht die Beurteilung im Gelände. Version 0.5.
   </footer>
 </main>
 </div>
@@ -319,7 +338,7 @@ a.btn.ghost { color: var(--accent); background: transparent; }
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script>
 "use strict";
-const VERSION = "0.4";
+const VERSION = "0.5";
 const LEVELS = { no_snow: 0, no_rating: 0, low: 1, moderate: 2, considerable: 3, high: 4, very_high: 5 };
 const LEVEL_NAME = ["keine Angabe", "gering", "mäßig", "erheblich", "groß", "sehr groß"];
 const PROBLEM = {
@@ -801,7 +820,8 @@ function renderPowder() {
         el("div", {}, el("b", { text: a.name }), ` · ${num(sn.past)} cm in den letzten 24 h, ${num(sn.next)} cm in den nächsten 24 h`),
         ...notes,
         show.length ? el("div", { class: "tours" }, show.map(t => tourNode(t, false)))
-          : (anyOpen ? el("div", { class: "status", text: "Keine eigene Tour in den offenen Teilgebieten gespeichert." }) : null));
+          : (anyOpen ? el("div", { class: "status", text: "Keine eigene Tour in den offenen Teilgebieten gespeichert." }) : null),
+        anyOpen ? el("div", {}, el("button", { class: "btn ghost", type: "button", onclick: () => showFinderFor(a.key), text: `Passende Routen in ${a.name}` })) : null);
     }));
 }
 
@@ -993,7 +1013,7 @@ function fillRegionSelect() {
   for (const [id, name] of [...ids].sort((a, b) => a[1].localeCompare(b[1], "de"))) sel.append(el("option", { value: id, text: `${name} (${id})` }));
   if (cur) sel.value = cur;
 }
-function renderAll() { renderStatus(); renderAreas(); renderPowder(); renderTours(); fillRegionSelect(); renderTourDetail(); updateMap(); renderMapChrome(); }
+function renderAll() { renderStatus(); renderAreas(); renderPowder(); renderTours(); fillRegionSelect(); renderTourDetail(); updateMap(); renderMapChrome(); renderFinder(); }
 
 // ---------- map ----------
 // Overview: EAWS micro-regions coloured by the day's highest danger level. Tap a region: topographic map with
@@ -1181,7 +1201,7 @@ async function showRoute(feature) {
   mapState.route.info = info || "fail";
   renderMapPanel();
 }
-function routeName(p) { return p.name || p["piste:name"] || p.ref || "Skitour ohne Namen"; }
+function routeName(p) { return routeTitle(p); }
 function routeAsTour(p, info) {
   const shape = shapesFor(state.date).find(f => pointInShape(info.top.lon, info.top.lat, f.geometry));
   const steep = info.maxS >= 40 ? 4 : info.maxS >= 35 ? 3 : info.maxS >= 30 ? 2 : 1;
@@ -1566,6 +1586,155 @@ function renderMapPanel() {
       f.snow ? el("p", { class: "status", text: "Schneehöhe an den Messstationen. Für vergangene Tage der Wert um 6 Uhr aus dem Archiv, sonst die aktuellen Werte." }) : null),
     r ? el("details", { class: "panel" }, el("summary", { text: "Vollständiger Lagebericht" }), bulletinDetail(id)) : null);
 }
+// ---------- tour suggestions from the OSM routes ----------
+// Each route carries precomputed numbers (st: length, ascent, highest point, steepest slope, aspects of steep parts),
+// its micro-region and the nearest named peak. The day's bulletin and new snow decide what is suggested.
+const finder = Object.assign({ area: "allgaeu", steep: 90, asc: 99999, sort: "snow", avoid: true, l3: true, raw: false, shown: 20 },
+  store.get("lawinenapp.finder.v1", {}));
+let routesPromise = null;
+function loadRoutes() {
+  if (layerData.routes && layerData.routes !== "loading") return Promise.resolve(layerData.routes);
+  if (!routesPromise) routesPromise = getJSON(ROUTES_URL).then(g => {
+    layerData.routes = g;
+    if (mapState.map && mapState.ready) mapState.map.getSource("routes").setData(g);
+    return g;
+  }).catch(e => { routesPromise = null; throw e; });
+  return routesPromise;
+}
+function routeTitle(p) {
+  if (p.name || p["piste:name"]) return p.name || p["piste:name"];
+  if (p.peak) return `Skitour zum ${p.peak}`;
+  return p.ref || "Skitour ohne Namen";
+}
+function routePseudoTour(f) {
+  const p = f.properties, st = p.st;
+  return { region: p.region, top: p.peak_ele && Math.abs(p.peak_ele - st.top) < 150 ? p.peak_ele : st.top,
+    steep: st.max >= 40 ? 4 : st.max >= 35 ? 3 : st.max >= 30 ? 2 : 1, aspects: st.asp || [] };
+}
+const routeSnow = new Map(); // `${date}|${osm}` -> { past, today }
+async function fetchRouteSnow(feats, date) {
+  const todo = feats.filter(f => !routeSnow.has(`${date}|${f.properties.osm}`));
+  for (let i = 0; i < todo.length; i += 50) {
+    const part = todo.slice(i, i + 50), st = part.map(f => f.properties.st);
+    const q = `latitude=${st.map(s => s.tlat).join(",")}&longitude=${st.map(s => s.tlon).join(",")}&elevation=${st.map(s => s.top).join(",")}` +
+      `&daily=snowfall_sum&timezone=Europe%2FBerlin&start_date=${addDays(date, -3)}&end_date=${date}`;
+    try {
+      const res = await getJSON(`${weatherBase(date)}?${q}`), arr = Array.isArray(res) ? res : [res];
+      part.forEach((f, k) => {
+        const d = arr[k] && arr[k].daily; if (!d) return;
+        const v = d.snowfall_sum.map(x => x || 0);
+        routeSnow.set(`${date}|${f.properties.osm}`, { past: v[0] + v[1] + v[2], today: v[3] });
+      });
+    } catch (e) { /* leave without snow numbers */ }
+  }
+}
+function finderAreaOk(region) {
+  if (finder.area === "all") return true;
+  return regionArea(region) === finder.area;
+}
+let finderToken = 0;
+async function renderFinder() {
+  const list = $("#f-list"), sum = $("#f-sum"), token = ++finderToken, date = state.date;
+  let g;
+  try { g = await loadRoutes(); } catch (e) { put(sum, "Die Skitouren konnten nicht geladen werden."); put(list); return; }
+  if (token !== finderToken) return;
+  const haveBulletins = state.regions.size > 0;
+  const counts = { stop: 0, l3: 0, hits: 0, steep: 0, asc: 0 };
+  const rows = [];
+  for (const f of g.features || []) {
+    const p = f.properties, st = p.st;
+    if (!st || !p.region || !finderAreaOk(p.region)) continue;
+    if (st.asc < 200 || st.len < 1000) continue; // pieces of a route, not a tour of their own
+    if (st.max >= finder.steep) { counts.steep++; continue; }
+    if (st.asc > finder.asc) { counts.asc++; continue; }
+    const pseudo = routePseudoTour(f), ev = evaluateTour(pseudo), r = state.regions.get(p.region);
+    if (haveBulletins && !finder.raw) {
+      if (ev.status === "stop") { counts.stop++; continue; }
+      if (ev.status === "none") continue;
+      if (ev.status === "warn" && !finder.l3) { counts.l3++; continue; }
+      if (finder.avoid && r && problemHits(pseudo, r.bulletin).length) { counts.hits++; continue; }
+    }
+    rows.push({ f, ev, pseudo });
+  }
+  if (!haveBulletins && !finder.raw) {
+    put(sum, el("div", { class: "note" }, "Für dieses Datum liegt kein Lagebericht vor, deshalb gibt es keine Vorschläge. ",
+      el("button", { class: "btn ghost", type: "button", onclick: () => { finder.raw = true; renderFinder(); }, text: "Routen ohne Bewertung zeigen" })));
+    put(list); return;
+  }
+  // New snow for the routes that can be shown, ascent order first so the cut is stable.
+  rows.sort((a, b) => a.f.properties.st.asc - b.f.properties.st.asc);
+  const cand = rows.slice(0, 200);
+  put(sum, `${rows.length} passende Routen, lade Neuschnee …`);
+  await fetchRouteSnow(cand.map(x => x.f), date);
+  if (token !== finderToken) return;
+  const snowOf = x => routeSnow.get(`${date}|${x.f.properties.osm}`);
+  const rank = { go: 0, warn: 1, none: 2 };
+  rows.sort((a, b) => {
+    if (finder.sort === "name") return routeTitle(a.f.properties).localeCompare(routeTitle(b.f.properties), "de");
+    if (finder.sort === "asc") return a.f.properties.st.asc - b.f.properties.st.asc;
+    const sa = snowOf(a), sb = snowOf(b);
+    return (rank[a.ev.status] - rank[b.ev.status]) || ((sb ? sb.past + sb.today : -1) - (sa ? sa.past + sa.today : -1));
+  });
+  const areaName = finder.area === "all" ? "allen Gebieten" : (AREAS.find(a => a.key === finder.area) || {}).name;
+  const out = [`${rows.length} ${rows.length === 1 ? "Vorschlag" : "Vorschläge"} in ${areaName}`];
+  if (counts.stop) out.push(`${counts.stop} wegen Stufe 4 ausgeblendet`);
+  if (counts.l3) out.push(`${counts.l3} in Stufe-3-Gebieten ausgeblendet`);
+  if (counts.hits) out.push(`${counts.hits} führen durch Gefahrenstellen laut Bericht`);
+  if (counts.steep || counts.asc) out.push(`${counts.steep + counts.asc} zu steil oder zu lang`);
+  put(sum, out.join(" · ") + ".", finder.raw && haveBulletins === false ? el("div", { class: "note warn", text: "Ohne Lagebericht, keine Bewertung. Das sind keine Vorschläge." }) : null);
+  put(list, rows.slice(0, finder.shown).map(x => routeCard(x, snowOf(x))),
+    rows.length > finder.shown ? el("button", { class: "btn ghost", type: "button", onclick: () => { finder.shown += 20; renderFinder(); }, text: `Weitere ${Math.min(20, rows.length - finder.shown)} zeigen` }) : null);
+}
+function routeCard({ f, ev, pseudo }, snow) {
+  const p = f.properties, st = p.st;
+  const notes = ev.notes.filter(n => !/Expositionen der Tour sind nicht eingetragen/.test(n));
+  const already = state.tours.find(t => t.fromRoute === p.osm);
+  return el("div", { class: "tour" },
+    el("div", { class: "top" }, levelDot(ev.level), el("span", { class: "name", text: routeTitle(p) }),
+      ev.status === "warn" ? el("span", { class: "badge warn", text: "Warnung Stufe 3" }) : ev.status === "go" ? el("span", { class: "badge", text: "Lage prüfen" }) : el("span", { class: "badge", text: "ohne Bewertung" }),
+      p["piste:difficulty"] ? el("span", { class: "badge", text: DIFFICULTY[p["piste:difficulty"]] || p["piste:difficulty"] }) : null),
+    el("div", { class: "meta", text: [regionLabel(p.region), `${st.asc} Hm`, `${num(st.len / 1000, 1)} km`, `bis ${pseudo.top} m`, `steilste Stelle ${st.max}°`,
+      st.asp && st.asp.length ? `steil nach ${st.asp.map(a => ASPECT_DE[a]).join(", ")}` : null, p.peak && (p.name || p["piste:name"]) ? `Gipfel ${p.peak}` : null].filter(Boolean).join(" · ") }),
+    snow ? el("div", { class: "snow" }, el("span", {}, "Neuschnee 3 Tage ", el("b", { text: `${num(snow.past)} cm` })), el("span", {}, "am Tag ", el("b", { text: `${num(snow.today)} cm` }))) : null,
+    notes.length ? el("ul", {}, notes.map(n => el("li", { text: n }))) : null,
+    el("div", { class: "row" },
+      el("button", { class: "btn ghost", type: "button", onclick: () => routeOnMap(f), text: "Auf der Karte" }),
+      already ? el("span", { class: "status", text: "In Meine Touren gespeichert" })
+        : el("button", { class: "btn ghost", type: "button", onclick: e => {
+            const t = { id: "t" + Date.now(), name: routeTitle(p), region: p.region, top: pseudo.top, steep: pseudo.steep,
+              lat: st.tlat, lon: st.tlon, aspects: pseudo.aspects, fromRoute: p.osm };
+            state.tours.push(t); saveTours();
+            e.target.replaceWith(el("span", { class: "status", text: "In Meine Touren gespeichert" }));
+          }, text: "Als Tour speichern" })));
+}
+function routeOnMap(f) {
+  if (!mapState.map) return;
+  if (!mapState.filter.routes) { mapState.filter.routes = true; store.set("lawinenapp.mapfilter.v1", mapState.filter); applyMode(); ensureLayerData(); }
+  const st = f.properties.st;
+  enterRegion(f.properties.region, [st.tlon, st.tlat]);
+  showRoute(f);
+  $("#map-sec").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function initFinder() {
+  const area = $("#f-area");
+  put(area, el("option", { value: "all", text: "Alle Gebiete" }), AREAS.map(a => el("option", { value: a.key, text: a.name })));
+  const bind = (id, key, conv = v => v) => {
+    const n = $(id);
+    if (n.type === "checkbox") n.checked = !!finder[key]; else n.value = String(finder[key]);
+    n.addEventListener("change", () => { finder[key] = n.type === "checkbox" ? n.checked : conv(n.value); finder.shown = 20; store.set("lawinenapp.finder.v1", { ...finder, raw: false }); renderFinder(); });
+  };
+  bind("#f-area", "area"); bind("#f-steep", "steep", Number); bind("#f-asc", "asc", Number); bind("#f-sort", "sort");
+  bind("#f-avoid", "avoid"); bind("#f-l3", "l3");
+  $("#finder").addEventListener("submit", e => e.preventDefault());
+}
+function showFinderFor(areaKey) {
+  finder.area = areaKey; finder.sort = "snow"; finder.shown = 20;
+  $("#f-area").value = areaKey; $("#f-sort").value = "snow";
+  store.set("lawinenapp.finder.v1", { ...finder, raw: false });
+  renderFinder();
+  $("#finder-sec").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 // ---------- actions ----------
 async function load() {
   $("#status").textContent = "Lade Lageberichte und Wetter …";
@@ -1578,7 +1747,7 @@ async function load() {
   renderAll();
 }
 function setDate(d) {
-  state.date = d; $("#date").value = d;
+  state.date = d; $("#date").value = d; finder.raw = false; finder.shown = 20;
   const today = ymd(new Date());
   $("#btn-today").setAttribute("aria-pressed", String(d === today));
   $("#btn-tomorrow").setAttribute("aria-pressed", String(d === addDays(today, 1)));
@@ -1647,6 +1816,7 @@ $("#m-3d").addEventListener("click", () => set3D(true));
 $("#m-full").addEventListener("click", () => setFull(!mapState.full));
 $("#m-filter").addEventListener("click", () => { const p = $("#m-panel"); p.hidden = !p.hidden; });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && mapState.full) setFull(false); });
+initFinder();
 try { initMap(); } catch (e) { showMapMsg("Die Karte konnte nicht gestartet werden."); console.error(e); }
 setDate(ymd(new Date()));
 </script>
