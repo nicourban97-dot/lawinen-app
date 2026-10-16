@@ -1,7 +1,7 @@
 {
- "generated": "2026-10-16T15:58:37.160Z",
+ "generated": "2026-10-16T16:00:56.687Z",
  "routes": 749,
- "zones": 753,
+ "zones": 750,
  "zoneNames": [
   [
    null,
@@ -106,13 +106,6 @@
    "Schongebiet",
    "14",
    "winter",
-   null
-  ],
-  [
-   "Anger",
-   "Wasserschutzgebiet-Schutzzone I",
-   "12",
-   null,
    null
   ],
   [
@@ -266,20 +259,6 @@
    null,
    "Wegegebot",
    "14",
-   null,
-   null
-  ],
-  [
-   "Untersteinbach",
-   "Wasserschutzgebiet-Schutzzone III",
-   "12",
-   null,
-   null
-  ],
-  [
-   "Untersteinbach",
-   "Wasserschutzgebiet-Schutzzone I",
-   "12",
    null,
    null
   ],
@@ -1401,6 +1380,27 @@
    "Schongebiet",
    "14",
    "winter",
+   null
+  ],
+  [
+   "Wald-Wild-Schongebiet Schnittlauchmoosalm",
+   "Schongebiet",
+   "14",
+   "winter",
+   null
+  ],
+  [
+   "Wald-Wild-Schongebiet Rauhkopf",
+   "Schongebiet",
+   "14",
+   "winter",
+   null
+  ],
+  [
+   "Wald-Wild-Schongebiet",
+   "Gebietsverbot",
+   "14",
+   null,
    null
   ]
  ],
