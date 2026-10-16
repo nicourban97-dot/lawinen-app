@@ -15,7 +15,8 @@ async function overpass(query) {
           headers: { "User-Agent": "lawinen-app (github.com/nicourban97-dot/lawinen-app)" } });
         if (r.ok) return await r.json();
         last = new Error(`${url} ${r.status}`);
-      } catch (e) { last = e; }
+        console.log(`Overpass ${url} Antwort ${r.status}, Versuch ${attempt + 1}`);
+      } catch (e) { last = e; console.log(`Overpass ${url} Fehler ${e.message}, Versuch ${attempt + 1}`); }
       await new Promise(res => setTimeout(res, 15000 * (attempt + 1)));
     }
   }
@@ -216,14 +217,23 @@ async function addStats(features) {
 }
 
 mkdirSync("data", { recursive: true });
+// Every step logs to data/osm-log.txt (committed with the data) so failures can be read without the Actions login.
+const logLines = [];
+const say = (...a) => { const t = `${new Date().toISOString()} ${a.join(" ")}`; console.log(t); logLines.push(t); };
 const stamp = new Date().toISOString();
-const rt = await routes();
-await addStats(rt);
-writeFileSync("data/skitouren.geojson", JSON.stringify({ type: "FeatureCollection", generated: stamp, source: "OpenStreetMap-Mitwirkende (ODbL)", features: rt }));
-const z = await zones();
-writeFileSync("data/wildschutz.geojson", JSON.stringify({ type: "FeatureCollection", generated: stamp, source: "OpenStreetMap-Mitwirkende (ODbL)", features: z.feats }));
-const top = Object.entries(z.stats).sort((a, b) => b[1] - a[1]).slice(0, 80);
-writeFileSync("data/osm-info.json", JSON.stringify({ generated: stamp, routes: rt.length, zones: z.feats.length,
-  zoneNames: z.feats.slice(0, 200).map(f => [f.properties.name, f.properties.protection_title, f.properties.protect_class, f.properties.seasonal, f.properties["access:conditional"] || f.properties["ski:conditional"]]),
-  protectedAreaTypes: top }, null, 1));
-console.log(`routes ${rt.length}, zones ${z.feats.length}`);
+let rt = null, z = null;
+try {
+  rt = await routes(); say(`Routen geladen: ${rt.length}`);
+  try { await addStats(rt); say(`Kennzahlen berechnet: ${rt.filter(f => f.properties.st).length}, Kacheln ${demTiles.size}`); }
+  catch (e) { say("Kennzahlen fehlgeschlagen:", e.stack || e); }
+  writeFileSync("data/skitouren.geojson", JSON.stringify({ type: "FeatureCollection", generated: stamp, source: "OpenStreetMap-Mitwirkende (ODbL)", features: rt }));
+} catch (e) { say("Routen fehlgeschlagen, alte Datei bleibt:", e.stack || e); }
+try {
+  z = await zones(); say(`Schutzgebiete: ${z.feats.length}`);
+  writeFileSync("data/wildschutz.geojson", JSON.stringify({ type: "FeatureCollection", generated: stamp, source: "OpenStreetMap-Mitwirkende (ODbL)", features: z.feats }));
+  const top = Object.entries(z.stats).sort((a, b) => b[1] - a[1]).slice(0, 80);
+  writeFileSync("data/osm-info.json", JSON.stringify({ generated: stamp, routes: rt ? rt.length : null, zones: z.feats.length,
+    zoneNames: z.feats.slice(0, 200).map(f => [f.properties.name, f.properties.protection_title, f.properties.protect_class, f.properties.seasonal, f.properties["access:conditional"] || f.properties["ski:conditional"]]),
+    protectedAreaTypes: top }, null, 1));
+} catch (e) { say("Schutzgebiete fehlgeschlagen, alte Datei bleibt:", e.stack || e); }
+writeFileSync("data/osm-log.txt", logLines.join("\n") + "\n");
