@@ -46,6 +46,7 @@
   }
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; }
 body {
   background: var(--bg); color: var(--fg); font: 15px/1.5 var(--font-body);
@@ -195,6 +196,16 @@ footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line)
 .map-wrap.full .map-bar { top: calc(8px + env(safe-area-inset-top, 0px)); left: max(8px, env(safe-area-inset-left, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); }
 .map-wrap.full .maplibregl-ctrl-bottom-right, .map-wrap.full .maplibregl-ctrl-bottom-left { margin-bottom: env(safe-area-inset-bottom, 0px); }
 html.noscroll, html.noscroll body { overflow: hidden; }
+.legend b { font-weight: 600; }
+.legend .lnote { color: var(--muted); max-width: 150px; }
+.legend.mini > div { display: none; }
+.dot-sw { width: 10px; height: 10px; border-radius: 50%; }
+.line-sw { width: 18px; height: 4px; border: 0; border-radius: 2px; background: #d4002a; box-shadow: 0 0 0 1.5px #fff; vertical-align: 2px; }
+.wild-sw { background: rgba(46,125,50,.35); border: 1.5px dashed #1b5e20; }
+svg.profile { width: 100%; height: auto; display: block; }
+.notes { margin: 0; padding-left: 18px; font-size: 13px; }
+a.btn { display: inline-block; text-decoration: none; font: 600 14px var(--font-body); padding: 7px 12px; border-radius: 6px; border: 1px solid var(--accent); }
+a.btn.ghost { color: var(--accent); background: transparent; }
 .mpanel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .mpanel.sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; max-height: 55%; overflow-y: auto; background: var(--bg); border-top: 1px solid var(--line); padding: 12px max(12px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); box-shadow: 0 -4px 16px rgba(0,0,0,.2); }
 .filters { display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
@@ -299,8 +310,8 @@ html.noscroll, html.noscroll body { overflow: hidden; }
     <a href="https://avalanche.report" target="_blank" rel="noopener">Lawinenwarndienst Tirol (avalanche.report)</a>,
     <a href="https://www.vorarlberg.at/lawinenbericht" target="_blank" rel="noopener">Lawinenwarndienst Vorarlberg</a>.
     Messstationen: Lawinenwarndienste Tirol, Bayern und Vorarlberg über avalanche.report und lawinen-warnung.eu, dazu die jeweils genannten Betreiber.
-    Wetter: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (Modelldaten, nicht-kommerzielle Nutzung). Karte: OpenTopoMap und OpenStreetMap-Mitwirkende, Gelände: Terrain Tiles (AWS Open Data), Teilgebiete: EAWS.
-    Diese App ist eine Entscheidungshilfe. Sie ersetzt nicht den vollständigen Lagebericht und nicht die Beurteilung im Gelände. Version 0.3.
+    Wetter: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (Modelldaten, nicht-kommerzielle Nutzung). Karte: OpenTopoMap und OpenStreetMap-Mitwirkende, Gelände: Terrain Tiles (AWS Open Data), Teilgebiete: EAWS. Skitouren und Wildschutzgebiete: © OpenStreetMap-Mitwirkende (ODbL).
+    Diese App ist eine Entscheidungshilfe. Sie ersetzt nicht den vollständigen Lagebericht und nicht die Beurteilung im Gelände. Version 0.4.
   </footer>
 </main>
 </div>
@@ -308,7 +319,7 @@ html.noscroll, html.noscroll body { overflow: hidden; }
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script>
 "use strict";
-const VERSION = "0.3";
+const VERSION = "0.4";
 const LEVELS = { no_snow: 0, no_rating: 0, low: 1, moderate: 2, considerable: 3, high: 4, very_high: 5 };
 const LEVEL_NAME = ["keine Angabe", "gering", "mäßig", "erheblich", "groß", "sehr groß"];
 const PROBLEM = {
@@ -1002,8 +1013,214 @@ const levelMatch = ["match", ["get", "level"], 1, LEVEL_COLORS[1], 2, LEVEL_COLO
 const mapState = {
   map: null, ready: false, mode: "overview", region: null, three: false, full: false,
   shapes: null, names: {}, rev: 0,
-  filter: Object.assign({ slope: true, slopes: [true, true, true, true], aspects: [...ASPECTS], minElev: 0 }, store.get("lawinenapp.mapfilter.v1", {}))
+  route: null, snowLabel: "",
+  filter: Object.assign({ slope: true, slopes: [true, true, true, true], aspects: [...ASPECTS], minElev: 0, snow: false, wild: false, routes: false }, store.get("lawinenapp.mapfilter.v1", {}))
 };
+// --- extra map layers: snow depth at stations, wildlife zones and ski touring routes (OpenStreetMap, refreshed weekly by a GitHub Action) ---
+// Relative to the app's root, also when a test copy runs from /test/.
+const APP_BASE = location.pathname.replace(/\/test\/[^/]*$/, "/").replace(/[^/]*$/, "");
+const ROUTES_URL = APP_BASE + "data/skitouren.geojson";
+const WILD_URL = APP_BASE + "data/wildschutz.geojson";
+const SNOW_STEPS = [[0, "#e3e9ee"], [1, "#cfe3f7"], [25, "#9cc6ee"], [50, "#5fa2e0"], [100, "#2f74c8"], [150, "#1f4fa3"], [200, "#3b2a8f"], [300, "#6a1b9a"]];
+const snowColor = ["step", ["get", "hs"], SNOW_STEPS[0][1], ...SNOW_STEPS.slice(1).flatMap(([v, c]) => [v, c])];
+const DIFFICULTY = { novice: "sehr leicht", easy: "leicht", intermediate: "mittel", advanced: "schwer", expert: "sehr schwer", freeride: "Freeride", extreme: "extrem" };
+const layerData = { routes: null, wild: null };
+async function ensureLayerData() {
+  const m = mapState.map, f = mapState.filter; if (!m || !mapState.ready) return;
+  for (const [key, url, src] of [["routes", ROUTES_URL, "routes"], ["wild", WILD_URL, "wild"]]) {
+    if (!f[key] || layerData[key]) continue;
+    layerData[key] = "loading";
+    try { const g = await getJSON(url); layerData[key] = g; m.getSource(src).setData(g); }
+    catch (e) { layerData[key] = null; showMapMsg(key === "routes" ? "Die Skitouren konnten nicht geladen werden." : "Die Wildschutzgebiete konnten nicht geladen werden."); }
+    renderMapChrome();
+  }
+  if (f.snow) updateSnow();
+}
+// Snow depth: archived 6 o'clock values for past days, otherwise current values not older than 48 hours.
+let snowToken = 0;
+async function updateSnow() {
+  const m = mapState.map; if (!m || !mapState.ready || !mapState.filter.snow) return;
+  const token = ++snowToken, date = state.date, today = ymd(new Date());
+  let pts = [], label = "";
+  if (date < today) {
+    const lists = await Promise.allSettled(STATION_SOURCES.map(x => snapshot(x.id, `${date}_05-00`)));
+    pts = lists.filter(l => l.status === "fulfilled").flatMap(l => l.value);
+    label = `Stand ${fmtDay(date).replace(".,", "")}, 6 Uhr`;
+  }
+  if (!pts.length) {
+    const all = await loadStations();
+    pts = all.filter(s => s.v.date && Date.now() - new Date(s.v.date).getTime() < 48 * 36e5);
+    label = date < today ? "Kein Archiv für diesen Tag, aktuelle Messwerte" : "Aktuelle Messwerte";
+  }
+  if (token !== snowToken) return;
+  const seen = [];
+  const feats = pts.filter(s => s.v.HS != null && s.lat != null).filter(s => {
+    if (seen.some(x => distKm(x, s) < 0.3)) return false; seen.push(s); return true;
+  }).map(s => ({ type: "Feature", geometry: { type: "Point", coordinates: [s.lon, s.lat] },
+    properties: { hs: Math.max(0, Math.round(s.v.HS)), d24: s.v.HSD24 == null ? null : Math.round(s.v.HSD24), name: s.name, elev: Math.round(s.elev || 0), date: s.v.date || "" } }));
+  mapState.snowLabel = feats.length ? label : "Keine Messwerte zur Schneehöhe für diesen Tag";
+  m.getSource("snow").setData({ type: "FeatureCollection", features: feats });
+  renderMapChrome();
+}
+function snowPopup(p, lngLat) {
+  const d = p.d24 === null || p.d24 === undefined || p.d24 === "null" ? null : Number(p.d24);
+  new maplibregl.Popup({ maxWidth: "240px" }).setLngLat(lngLat).setDOMContent(el("div", { class: "popup" },
+    el("b", { text: p.name }), el("div", { class: "status", text: `${p.elev} m` }),
+    el("div", {}, `Schneehöhe ${p.hs} cm`, d != null ? `, ${d >= 0 ? "+" : ""}${d} cm in 24 h` : ""),
+    p.date ? el("div", { class: "status", text: `gemessen ${fmtTime(p.date)}` }) : null)).addTo(mapState.map);
+}
+// OSM opening rules like "discouraged @ (Dec 15-Apr 30)" in German.
+const MONTHS = { Jan: "Jan.", Feb: "Feb.", Mar: "März", Apr: "Apr.", May: "Mai", Jun: "Juni", Jul: "Juli", Aug: "Aug.", Sep: "Sep.", Oct: "Okt.", Nov: "Nov.", Dec: "Dez." };
+function ruleText(s) {
+  if (!s) return null;
+  const what = { discouraged: "Betreten unerwünscht", no: "Betreten verboten", private: "Betreten verboten", only_trail_use: "nur auf Wegen", designated: "nur auf ausgewiesenen Routen" };
+  return s.split(";").map(part => {
+    const m = part.trim().match(/^(\w+)\s*@\s*\((.*)\)$/);
+    if (!m) return part.trim();
+    return `${what[m[1]] || m[1]}: ${m[2].replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/g, x => MONTHS[x])}`;
+  }).join("; ");
+}
+function wildPopup(p, lngLat) {
+  const rules = [ruleText(p["ski:conditional"]), ruleText(p["access:conditional"])].filter(Boolean);
+  new maplibregl.Popup({ maxWidth: "260px" }).setLngLat(lngLat).setDOMContent(el("div", { class: "popup" },
+    el("b", { text: p.name || p.protection_title || "Schutzgebiet" }),
+    p.protection_title && p.protection_title !== p.name ? el("div", { text: p.protection_title }) : null,
+    rules.map(r => el("div", { text: r })),
+    p.seasonal === "winter" && !rules.length ? el("div", { text: "Gilt im Winter." }) : null,
+    p.description ? el("div", { class: "status", text: p.description }) : null,
+    el("div", { class: "status" }, "Quelle: ", el("a", { href: `https://www.openstreetmap.org/${p.osm}`, target: "_blank", rel: "noopener", text: "OpenStreetMap" }),
+      ". Nicht amtlich und nicht vollständig, vor Ort gilt die Beschilderung."))).addTo(mapState.map);
+}
+
+// --- route analysis from the elevation tiles ---
+const DEM_Z = 12;
+function worldPx(lon, lat, z) {
+  const n = 2 ** z * 256, s = Math.sin(lat * Math.PI / 180);
+  return [(lon + 180) / 360 * n, (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * n];
+}
+async function demPoint(lon, lat) {
+  const [X, Y] = worldPx(lon, lat, DEM_Z), tx = Math.floor(X / 256), ty = Math.floor(Y / 256);
+  const h = await demTile(DEM_Z, tx, ty);
+  const i = Math.min(254, Math.max(1, Math.floor(X - tx * 256))), j = Math.min(254, Math.max(1, Math.floor(Y - ty * 256)));
+  const at = (a, b) => h[b * 256 + a];
+  const px = 40075016.686 * Math.cos(lat * Math.PI / 180) / (256 * 2 ** DEM_Z);
+  const dx = ((at(i + 1, j - 1) + 2 * at(i + 1, j) + at(i + 1, j + 1)) - (at(i - 1, j - 1) + 2 * at(i - 1, j) + at(i - 1, j + 1))) / (8 * px);
+  const dy = ((at(i - 1, j + 1) + 2 * at(i, j + 1) + at(i + 1, j + 1)) - (at(i - 1, j - 1) + 2 * at(i, j - 1) + at(i + 1, j - 1))) / (8 * px);
+  let br = Math.atan2(-dx, dy) * 180 / Math.PI; if (br < 0) br += 360;
+  return { e: at(i, j), s: Math.atan(Math.hypot(dx, dy)) * 180 / Math.PI, asp: ASPECTS[Math.round(br / 45) % 8] };
+}
+function pointInShape(lon, lat, geom) {
+  const polys = geom.type === "Polygon" ? [geom.coordinates] : geom.coordinates;
+  const inRing = ring => { let c = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i], [xj, yj] = ring[j];
+    if ((yi > lat) !== (yj > lat) && lon < (xj - xi) * (lat - yi) / (yj - yi) + xi) c = !c; } return c; };
+  return polys.some(p => inRing(p[0]) && !p.slice(1).some(inRing));
+}
+async function analyzeRoute(geom) {
+  const lines = geom.type === "LineString" ? [geom.coordinates] : geom.coordinates;
+  const samples = []; let length = 0;
+  for (const ln of lines) {
+    let dist = 0;
+    for (let k = 0; k < ln.length; k++) {
+      const [lon, lat] = ln[k];
+      if (k > 0) {
+        const prev = ln[k - 1], d = distKm({ lat: prev[1], lon: prev[0] }, { lat, lon }) * 1000;
+        const steps = Math.max(1, Math.round(d / 30));
+        for (let t = 1; t <= steps; t++) samples.push({ lon: prev[0] + (lon - prev[0]) * t / steps, lat: prev[1] + (lat - prev[1]) * t / steps, d: dist + d * t / steps, seg: d / steps, line: lines.indexOf(ln) });
+        dist += d;
+      } else samples.push({ lon, lat, d: 0, seg: 0, line: lines.indexOf(ln) });
+    }
+    length += dist;
+  }
+  const vals = await Promise.all(samples.map(p => demPoint(p.lon, p.lat).catch(() => null)));
+  const pts = samples.map((p, k) => ({ ...p, ...(vals[k] || {}) })).filter(p => p.e != null);
+  if (!pts.length) return null;
+  let ascent = 0, top = pts[0], low = pts[0], maxS = 0;
+  const cls = [0, 0, 0, 0], aspects = {};
+  pts.forEach((p, k) => {
+    if (p.e > top.e) top = p; if (p.e < low.e) low = p; if (p.s > maxS) maxS = p.s;
+    const q = pts[k - 1];
+    if (q && q.line === p.line && p.e > q.e) ascent += p.e - q.e;
+    if (p.s >= 30) { cls[p.s >= 45 ? 3 : p.s >= 40 ? 2 : p.s >= 35 ? 1 : 0] += p.seg; aspects[p.asp] = (aspects[p.asp] || 0) + p.seg; }
+  });
+  // The longest line carries the profile; multi-part routes are shown one after another.
+  let off = 0; const profile = [];
+  lines.forEach((_, li) => { const part = pts.filter(p => p.line === li); part.forEach(p => profile.push([off + p.d, p.e])); if (part.length) off += part[part.length - 1].d; });
+  return { length, ascent, top, low, maxS, cls, aspects: ASPECTS.filter(a => (aspects[a] || 0) >= 60), profile };
+}
+function profileSvg(profile) {
+  if (profile.length < 2) return null;
+  const W = 600, H = 110, padL = 40, padB = 18, padT = 8;
+  const maxD = profile[profile.length - 1][0] || 1, es = profile.map(p => p[1]);
+  const lo = Math.floor(Math.min(...es) / 100) * 100, hi = Math.ceil(Math.max(...es) / 100) * 100 || lo + 100;
+  const x = d => padL + d / maxD * (W - padL - 6), y = e => padT + (1 - (e - lo) / Math.max(1, hi - lo)) * (H - padT - padB);
+  const svg = document.createElementNS(SVGNS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("class", "profile"); svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", `Höhenprofil von ${lo} bis ${hi} m über ${num(maxD / 1000, 1)} km`);
+  const add = (tag, attrs, text) => { const n = document.createElementNS(SVGNS, tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); if (text) n.textContent = text; svg.append(n); };
+  add("line", { x1: padL, y1: y(hi), x2: W - 6, y2: y(hi), stroke: "var(--line)" });
+  add("line", { x1: padL, y1: y(lo), x2: W - 6, y2: y(lo), stroke: "var(--line)" });
+  const d = profile.map((p, k) => `${k ? "L" : "M"}${x(p[0]).toFixed(1)} ${y(p[1]).toFixed(1)}`).join(" ");
+  add("path", { d: `${d} L${x(maxD).toFixed(1)} ${y(lo)} L${padL} ${y(lo)} Z`, fill: "color-mix(in srgb, var(--accent) 18%, transparent)", stroke: "none" });
+  add("path", { d, fill: "none", stroke: "var(--accent)", "stroke-width": 2 });
+  add("text", { x: padL - 4, y: y(hi) + 4, "text-anchor": "end", "font-size": 11, fill: "var(--muted)" }, `${hi}`);
+  add("text", { x: padL - 4, y: y(lo) + 4, "text-anchor": "end", "font-size": 11, fill: "var(--muted)" }, `${lo}`);
+  add("text", { x: W - 6, y: H - 4, "text-anchor": "end", "font-size": 11, fill: "var(--muted)" }, `${num(maxD / 1000, 1)} km`);
+  add("text", { x: padL, y: H - 4, "font-size": 11, fill: "var(--muted)" }, "0");
+  return svg;
+}
+async function showRoute(feature) {
+  mapState.route = { feature, info: null };
+  const m = mapState.map;
+  m.setFilter("route-sel", ["==", ["get", "osm"], feature.properties.osm]);
+  if (mapState.full) $("#m-panel").hidden = false;
+  renderMapPanel();
+  if (!mapState.full) $("#m-panel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  const info = await analyzeRoute(feature.geometry);
+  if (!mapState.route || mapState.route.feature !== feature) return;
+  mapState.route.info = info || "fail";
+  renderMapPanel();
+}
+function routeName(p) { return p.name || p["piste:name"] || p.ref || "Skitour ohne Namen"; }
+function routeAsTour(p, info) {
+  const shape = shapesFor(state.date).find(f => pointInShape(info.top.lon, info.top.lat, f.geometry));
+  const steep = info.maxS >= 40 ? 4 : info.maxS >= 35 ? 3 : info.maxS >= 30 ? 2 : 1;
+  return { id: "t" + Date.now(), name: routeName(p), region: shape ? shape.properties.id : "", top: Math.round(info.top.e), steep,
+    lat: +info.top.lat.toFixed(5), lon: +info.top.lon.toFixed(5), aspects: info.aspects, fromRoute: p.osm };
+}
+function routePanel() {
+  const { feature, info } = mapState.route, p = feature.properties;
+  const close = el("button", { class: "btn ghost", type: "button", onclick: () => { mapState.route = null; mapState.map.setFilter("route-sel", ["==", ["get", "osm"], "-"]); renderMapPanel(); }, text: "Schließen" });
+  const head = el("div", { class: "top" }, el("span", { class: "name", text: routeName(p) }),
+    p["piste:difficulty"] ? el("span", { class: "badge", text: DIFFICULTY[p["piste:difficulty"]] || p["piste:difficulty"] }) : null,
+    el("span", { class: "acts" }, close));
+  if (!info) return el("div", { class: "panel" }, head, el("p", { class: "status", text: "Berechne Höhenprofil und Steilheit …" }));
+  if (info === "fail") return el("div", { class: "panel" }, head, el("p", { class: "status", text: "Für diese Route konnten keine Geländedaten geladen werden." }));
+  const pseudo = routeAsTour(p, info), ev = pseudo.region ? evaluateTour(pseudo) : { status: "none", level: null, notes: [] };
+  const already = state.tours.find(t => t.fromRoute === p.osm);
+  const kpi = (k, v, s) => el("div", { class: "kpi" }, el("div", { class: "k", text: k }), el("div", { class: "v", text: v }), s ? el("div", { class: "s", text: s }) : null);
+  const steepTxt = SLOPE_CLASSES.map((c, k) => info.cls[k] >= 30 ? `${c.label}: ${num(info.cls[k] / 1000, 1).replace(/^0,0$/, "<0,1")} km` : null).filter(Boolean).join(" · ");
+  return el("div", { class: "panel" }, head,
+    el("div", { class: "top" }, levelDot(ev.level), el("span", { text: pseudo.region ? regionLabel(pseudo.region) : "außerhalb der Teilgebiete" }), pseudo.region ? tourBadge(ev) : null),
+    ev.notes.length ? el("ul", { class: "notes" }, ev.notes.map(n => el("li", { text: n }))) : null,
+    el("div", { class: "kpis" },
+      kpi("Länge", `${num(info.length / 1000, 1)} km`, "laut Karte, alle Teilstücke"),
+      kpi("Höhe", `${Math.round(info.low.e)} – ${Math.round(info.top.e)} m`, `rund ${Math.round(info.ascent / 10) * 10} Hm im Aufstieg`),
+      kpi("Steilste Stelle", `${Math.round(info.maxS)}°`, "aus dem Geländemodell"),
+      kpi("Steile Expositionen", info.aspects.length ? info.aspects.map(a => ASPECT_DE[a]).join(", ") : "–", "Abschnitte ab 30°")),
+    steepTxt ? el("p", { class: "status", text: `Strecke in steilem Gelände: ${steepTxt}.` }) : el("p", { class: "status", text: "Laut Geländemodell kein Abschnitt steiler als 30°." }),
+    profileSvg(info.profile),
+    p.description ? el("p", { text: p.description }) : null,
+    el("p", { class: "status", text: "Route aus OpenStreetMap, nicht geprüft. Höhen und Steilheit berechnet die App aus dem Geländemodell (rund 30 m), steile Stellen können steiler sein. Die Bewertung nimmt das Teilgebiet des höchsten Punkts." }),
+    el("div", { class: "row" },
+      already ? el("span", { class: "status", text: `Schon als Tour „${already.name}“ gespeichert.` })
+        : el("button", { class: "btn", type: "button", onclick: e => {
+            const t = routeAsTour(p, info); state.tours.push(t); saveTours();
+            e.target.replaceWith(el("span", { class: "status", text: `Als Tour „${t.name}“ gespeichert. Bitte Name und Angaben prüfen.` }));
+          }, text: "Als Tour speichern" }),
+      el("a", { class: "btn ghost", href: `https://www.openstreetmap.org/${p.osm}`, target: "_blank", rel: "noopener", text: "In OpenStreetMap" })));
+}
+
 const regionLabel = id => (state.regions.get(id) || {}).name || mapState.names[id] || STATIC_REGION_NAMES[id] || id;
 
 async function loadRegionShapes() {
@@ -1115,14 +1332,23 @@ function initMap() {
         // Computed at zoom 12 (about 26 m per pixel, close to the resolution of the elevation data) and enlarged above.
         slope: { type: "raster", tiles: ["slope://{z}/{x}/{y}?r=0"], tileSize: 256, minzoom: SLOPE_MINZOOM, maxzoom: 12 },
         danger: { type: "geojson", data: { type: "FeatureCollection", features: [] } },
-        tours: { type: "geojson", data: { type: "FeatureCollection", features: [] } }
+        tours: { type: "geojson", data: { type: "FeatureCollection", features: [] } },
+        routes: { type: "geojson", data: { type: "FeatureCollection", features: [] } },
+        wild: { type: "geojson", data: { type: "FeatureCollection", features: [] } },
+        snow: { type: "geojson", data: { type: "FeatureCollection", features: [] } }
       },
       layers: [
         { id: "topo", type: "raster", source: "topo", paint: { "raster-saturation": -0.75, "raster-opacity": 0.9 } },
         { id: "danger-fill", type: "fill", source: "danger", paint: { "fill-color": levelMatch, "fill-opacity": 0.55 } },
+        { id: "wild-fill", type: "fill", source: "wild", minzoom: 9, layout: { visibility: "none" }, paint: { "fill-color": "#2e7d32", "fill-opacity": 0.28 } },
         { id: "slope", type: "raster", source: "slope", minzoom: SLOPE_MINZOOM, layout: { visibility: "none" } },
         { id: "danger-line", type: "line", source: "danger", paint: { "line-color": "#2b3a45", "line-width": 0.7, "line-opacity": 0.7 } },
         { id: "sel-line", type: "line", source: "danger", filter: ["==", ["get", "id"], "-"], paint: { "line-color": "#14202b", "line-width": 3.5 } },
+        { id: "wild-line", type: "line", source: "wild", minzoom: 9, layout: { visibility: "none" }, paint: { "line-color": "#1b5e20", "line-width": 1.6, "line-dasharray": [2, 1] } },
+        { id: "route-casing", type: "line", source: "routes", minzoom: 9, layout: { visibility: "none", "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#ffffff", "line-width": 5, "line-opacity": 0.85 } },
+        { id: "route-line", type: "line", source: "routes", minzoom: 9, layout: { visibility: "none", "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#d4002a", "line-width": 2.4 } },
+        { id: "route-sel", type: "line", source: "routes", filter: ["==", ["get", "osm"], "-"], layout: { visibility: "none", "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#d4002a", "line-width": 6, "line-opacity": 0.9 } },
+        { id: "snow", type: "circle", source: "snow", layout: { visibility: "none" }, paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], 7, 4, 12, 8], "circle-color": snowColor, "circle-stroke-color": "#14202b", "circle-stroke-width": 1 } },
         { id: "tours", type: "circle", source: "tours", paint: { "circle-radius": 7, "circle-color": levelMatch, "circle-stroke-color": "#14202b", "circle-stroke-width": 2 } }
       ]
     }
@@ -1137,16 +1363,22 @@ function initMap() {
     if (!mapState.shapes.length) showMapMsg("Die Umrisse der Teilgebiete konnten nicht geladen werden.");
     updateMap();
   });
+  const shown = ids => ids.filter(id => map.getLayer(id) && map.getLayoutProperty(id, "visibility") !== "none");
   map.on("click", e => {
-    const t = map.queryRenderedFeatures(e.point, { layers: ["tours"] })[0];
-    if (t) { tourPopup(t.properties.id); return; }
+    const box = [[e.point.x - 7, e.point.y - 7], [e.point.x + 7, e.point.y + 7]];
+    const hit = (ids, at = box) => { const l = shown(ids); return l.length ? map.queryRenderedFeatures(at, { layers: l })[0] : null; };
+    const t = hit(["tours"]); if (t) { tourPopup(t.properties.id); return; }
+    const sn = hit(["snow"]); if (sn) { snowPopup(sn.properties, sn.geometry.coordinates); return; }
+    const r = hit(["route-line"]);
+    if (r) { const all = layerData.routes && layerData.routes.features || []; showRoute(all.find(x => x.properties.osm === r.properties.osm) || r); return; }
+    const w = hit(["wild-fill"], e.point); if (w) { wildPopup(w.properties, e.lngLat); return; }
     const f = map.queryRenderedFeatures(e.point, { layers: ["danger-fill"] })[0];
     if (f && f.properties.id !== mapState.region) enterRegion(f.properties.id);
   });
   map.on("mousemove", e => {
-    map.getCanvas().style.cursor = map.queryRenderedFeatures(e.point, { layers: ["tours", "danger-fill"] }).length ? "pointer" : "";
+    map.getCanvas().style.cursor = map.queryRenderedFeatures(e.point, { layers: shown(["tours", "snow", "route-line", "wild-fill", "danger-fill"]) }).length ? "pointer" : "";
   });
-  map.on("zoomend", updateZoomHint);
+  map.on("zoomend", () => { updateZoomHint(); renderLegend(); });
   // MapLibre 4 sometimes keeps the camera height frozen at sea level after an animation with terrain.
   // After each move, compare it with the ground below the centre and recompute if it is off.
   map.on("moveend", () => {
@@ -1170,6 +1402,7 @@ function updateMap() {
   m.getSource("danger").setData(dangerGeoJSON());
   m.getSource("tours").setData(toursGeoJSON());
   applyMode();
+  ensureLayerData();
 }
 function applyMode() {
   const m = mapState.map; if (!m || !mapState.ready) return;
@@ -1178,9 +1411,13 @@ function applyMode() {
   m.setPaintProperty("topo", "raster-opacity", region ? 1 : 0.9);
   m.setPaintProperty("danger-fill", "fill-opacity", region
     ? ["case", ["==", ["get", "id"], mapState.region], 0, 0.3]
-    : ["case", ["==", ["get", "level"], 0], 0.15, 0.55]);
+    : ["interpolate", ["linear"], ["zoom"], 10, ["case", ["==", ["get", "level"], 0], 0.15, 0.55], 12.5, ["case", ["==", ["get", "level"], 0], 0.05, 0.2]]);
   m.setFilter("sel-line", ["==", ["get", "id"], region ? mapState.region : "-"]);
-  m.setLayoutProperty("slope", "visibility", region && mapState.filter.slope ? "visible" : "none");
+  const f = mapState.filter, vis = on => on ? "visible" : "none";
+  m.setLayoutProperty("slope", "visibility", vis(f.slope));
+  for (const id of ["wild-fill", "wild-line"]) m.setLayoutProperty(id, "visibility", vis(f.wild));
+  for (const id of ["route-casing", "route-line", "route-sel"]) m.setLayoutProperty(id, "visibility", vis(f.routes));
+  m.setLayoutProperty("snow", "visibility", vis(f.snow));
   renderMapChrome();
   updateZoomHint();
 }
@@ -1268,37 +1505,52 @@ function renderMapChrome() {
   $("#m-full").setAttribute("aria-pressed", String(mapState.full));
   $("#m-full").textContent = mapState.full ? "Schließen" : "Vollbild";
   $("#m-filter").hidden = !(mapState.full && region);
-  const leg = $("#m-legend");
-  if (region && mapState.filter.slope) put(leg, el("b", { text: "Hangneigung" }),
-    SLOPE_CLASSES.map((c, k) => mapState.filter.slopes[k] ? el("div", {}, el("span", { class: "sw", style: `background:rgb(${c.color.join(",")})` }), c.label) : null));
-  else put(leg, el("b", { text: "Gefahrenstufe" }),
-    [1, 2, 3, 4, 5].map(l => el("div", {}, el("span", { class: "sw", style: `background:${LEVEL_COLORS[l]}` }), `${l} ${LEVEL_NAME[l]}`)),
-    el("div", {}, el("span", { class: "sw", style: `background:${LEVEL_COLORS[0]}` }), "kein Bericht"));
+  renderLegend();
   renderMapPanel();
 }
-function renderMapPanel() {
-  const box = $("#m-panel");
-  if (mapState.mode !== "region") {
-    const none = ![...state.regions.keys()].length;
-    put(box, el("p", { class: "status", text: "Tippe auf ein Teilgebiet, um es als topografische Karte mit Hangneigung zu öffnen. Die Farbe zeigt die höchste Gefahrenstufe des Teilgebiets am gewählten Tag, unabhängig von der Höhe." }),
-      none ? el("p", { class: "status", text: "Für dieses Datum gibt es keine Lageberichte, deshalb sind alle Gebiete grau." }) : null);
-    return;
+function renderLegend() {
+  const leg = $("#m-legend"), f = mapState.filter, region = mapState.mode === "region";
+  const z = mapState.map ? mapState.map.getZoom() : 0;
+  const row = (sw, label) => el("div", {}, sw, label);
+  const box = c => el("span", { class: "sw", style: `background:${c}` });
+  const parts = [];
+  if (!region) parts.push(el("b", { text: "Gefahrenstufe" }), [1, 2, 3, 4, 5].map(l => row(box(LEVEL_COLORS[l]), `${l} ${LEVEL_NAME[l]}`)), row(box(LEVEL_COLORS[0]), "kein Bericht"));
+  if (f.slope && (region || z >= SLOPE_MINZOOM)) parts.push(el("b", { text: "Hangneigung" }),
+    SLOPE_CLASSES.map((c, k) => f.slopes[k] ? row(box(`rgb(${c.color.join(",")})`), c.label) : null));
+  if (f.snow) {
+    const lab = ["0", "1–25", "25–50", "50–100", "100–150", "150–200", "200–300", "über 300"];
+    parts.push(el("b", { text: "Schneehöhe in cm" }), SNOW_STEPS.map(([, c], k) => row(el("span", { class: "sw dot-sw", style: `background:${c}` }), lab[k])),
+      mapState.snowLabel ? el("div", { class: "lnote", text: mapState.snowLabel }) : null);
   }
-  const id = mapState.region, r = state.regions.get(id), f = mapState.filter, lvl = r ? maxLevel(r.bulletin) : null;
+  if (f.routes) parts.push(row(el("span", { class: "sw line-sw" }), "Skitour (OSM)"));
+  if (f.wild) parts.push(row(el("span", { class: "sw wild-sw" }), "Wildschutz (OSM)"));
+  put(leg, parts);
+  leg.hidden = !parts.length;
+}
+function renderMapPanel() {
+  const box = $("#m-panel"), f = mapState.filter, region = mapState.mode === "region";
   const chip = (on, label, onclick, sw) => el("button", { type: "button", class: "fchip", "aria-pressed": String(on), onclick },
     sw ? el("span", { class: "sw", style: `background:${sw}` }) : null, label);
+  const saveFilter = () => { store.set("lawinenapp.mapfilter.v1", f); applyMode(); ensureLayerData(); };
+  const toggle = key => () => { f[key] = !f[key]; saveFilter(); };
+  const id = mapState.region, r = region ? state.regions.get(id) : null, lvl = r ? maxLevel(r.bulletin) : null;
   const preset = r ? dangerPreset(r.bulletin) : null;
   const usePreset = () => { f.aspects = preset.aspects; f.minElev = preset.minElev; f.slope = true; f.slopes = [true, true, true, true]; refreshSlope(); };
   if (!ELEV_STEPS.includes(f.minElev)) ELEV_STEPS.push(f.minElev), ELEV_STEPS.sort((a, b) => a - b);
   put(box,
-    el("div", { class: "tour" },
+    mapState.route ? routePanel() : null,
+    region ? el("div", { class: "tour" },
       el("div", { class: "top" }, levelDot(lvl), el("span", { class: "name", text: regionLabel(id) }),
         lvl >= 4 ? el("span", { class: "badge stop", text: "Keine Tourenvorschläge" }) : lvl === 3 ? el("span", { class: "badge warn", text: "Warnung Stufe 3" }) : null),
-      el("div", { class: "meta", text: r ? paras(r.bulletin.highlights || (r.bulletin.avalancheActivity && r.bulletin.avalancheActivity.highlights) || "").join(" ") : "Kein Lagebericht für dieses Datum." })),
+      el("div", { class: "meta", text: r ? paras(r.bulletin.highlights || (r.bulletin.avalancheActivity && r.bulletin.avalancheActivity.highlights) || "").join(" ") : "Kein Lagebericht für dieses Datum." }))
+      : el("p", { class: "status", text: "Tippe auf ein Teilgebiet, um es als topografische Karte zu öffnen. Die Farbe zeigt die höchste Gefahrenstufe des Teilgebiets am gewählten Tag, unabhängig von der Höhe." }),
+    !region && ![...state.regions.keys()].length ? el("p", { class: "status", text: "Für dieses Datum gibt es keine Lageberichte, deshalb sind alle Gebiete grau." }) : null,
     el("div", { class: "filters" },
-      el("div", { class: "frow" }, el("span", { class: "flabel", text: "Hangneigung" }),
-        chip(f.slope, f.slope ? "eingeblendet" : "ausgeblendet", () => { f.slope = !f.slope; refreshSlope(); }),
-        f.slope ? SLOPE_CLASSES.map((c, k) => chip(f.slopes[k], c.label, () => { f.slopes[k] = !f.slopes[k]; refreshSlope(); }, `rgb(${c.color.join(",")})`)) : null),
+      el("div", { class: "frow" }, el("span", { class: "flabel", text: "Ebenen" }),
+        chip(f.slope, "Hangneigung", toggle("slope")), chip(f.snow, "Schneehöhe", toggle("snow")),
+        chip(f.wild, "Wildschutz", toggle("wild")), chip(f.routes, "Skitouren", toggle("routes"))),
+      f.slope ? el("div", { class: "frow" }, el("span", { class: "flabel", text: "Steilheit" }),
+        SLOPE_CLASSES.map((c, k) => chip(f.slopes[k], c.label, () => { f.slopes[k] = !f.slopes[k]; refreshSlope(); }, `rgb(${c.color.join(",")})`))) : null,
       f.slope ? el("div", { class: "frow" }, el("span", { class: "flabel", text: "Exposition" }),
         ASPECTS.map(a => chip(f.aspects.includes(a), ASPECT_DE[a], () => {
           f.aspects = f.aspects.includes(a) ? f.aspects.filter(x => x !== a) : ASPECTS.filter(x => x === a || f.aspects.includes(x)); refreshSlope(); })),
@@ -1306,12 +1558,14 @@ function renderMapPanel() {
       f.slope ? el("div", { class: "frow" }, el("label", { class: "flabel", for: "m-elev", text: "Höhe" }),
         el("select", { id: "m-elev", onchange: e => { f.minElev = Number(e.target.value); refreshSlope(); } },
           ELEV_STEPS.map(v => el("option", { value: v, text: v ? `über ${v} m` : "alle Höhen", selected: f.minElev === v })))) : null,
-      preset ? el("div", { class: "frow" }, el("button", { class: "btn", type: "button", onclick: usePreset, text: "Gefahrenstellen laut Lagebericht" }),
+      preset && f.slope ? el("div", { class: "frow" }, el("button", { class: "btn", type: "button", onclick: usePreset, text: "Gefahrenstellen laut Lagebericht" }),
         el("span", { class: "status", text: `Setzt ${preset.aspects.length === 8 ? "alle Expositionen" : preset.aspects.map(a => ASPECT_DE[a]).join(", ")} und ${preset.minElev ? `über ${preset.minElev} m` : "alle Höhen"} aus den Lawinenproblemen des Berichts${preset.treeline ? ", die Waldgrenze als 1800 m" : ""}.` })) : null,
-      el("p", { class: "status", text: "Die Hangneigung berechnet die App aus einem Geländemodell mit in den Alpen meist rund 30 m Auflösung. Kurze Steilstufen und schmale Rinnen werden dabei unterschätzt. Gut für die Grobplanung, keine Grundlage für die Spuranlage." })),
+      f.slope ? el("p", { class: "status", text: `Hangneigung ab Zoomstufe ${SLOPE_MINZOOM}, berechnet aus einem Geländemodell mit in den Alpen meist rund 30 m Auflösung. Kurze Steilstufen und schmale Rinnen werden unterschätzt. Gut für die Grobplanung, keine Grundlage für die Spuranlage.` }) : null,
+      f.routes ? el("p", { class: "status", text: "Skitouren aus OpenStreetMap, ab Zoomstufe 9. Tippe auf eine Route für Höhenprofil, Steilheit und Lawinenlage." }) : null,
+      f.wild ? el("p", { class: "status", text: "Wald-Wild-Schongebiete, Wildruhezonen und Schutzzonen aus OpenStreetMap, ab Zoomstufe 9. Nicht amtlich und nicht vollständig, vor Ort gilt die Beschilderung." }) : null,
+      f.snow ? el("p", { class: "status", text: "Schneehöhe an den Messstationen. Für vergangene Tage der Wert um 6 Uhr aus dem Archiv, sonst die aktuellen Werte." }) : null),
     r ? el("details", { class: "panel" }, el("summary", { text: "Vollständiger Lagebericht" }), bulletinDetail(id)) : null);
 }
-
 // ---------- actions ----------
 async function load() {
   $("#status").textContent = "Lade Lageberichte und Wetter …";
@@ -1387,6 +1641,7 @@ $("#s-thr").value = state.threshold;
 $("#s-thr").addEventListener("change", e => { state.threshold = Number(e.target.value) || 20; store.set("lawinenapp.threshold.v1", state.threshold); renderPowder(); });
 $("#settings").addEventListener("submit", e => e.preventDefault());
 $("#m-back").addEventListener("click", leaveRegion);
+$("#m-legend").addEventListener("click", () => $("#m-legend").classList.toggle("mini"));
 $("#m-2d").addEventListener("click", () => set3D(false));
 $("#m-3d").addEventListener("click", () => set3D(true));
 $("#m-full").addEventListener("click", () => setFull(!mapState.full));

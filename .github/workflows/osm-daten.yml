@@ -9,6 +9,7 @@ on:
       - ".github/workflows/osm-daten.yml"
 permissions:
   contents: write
+  pages: write
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -24,4 +25,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data
-          if git diff --cached --quiet; then echo "keine Änderung"; else git commit -m "OSM-Daten aktualisiert"; git pull --rebase; git push; fi
+          if git diff --cached --quiet; then echo "keine Änderung"; else git commit -m "OSM-Daten aktualisiert"; git pull --rebase; git push; echo "changed=1" >> "$GITHUB_ENV"; fi
+      # Pushes made with the workflow token do not start a Pages build on their own.
+      - name: Pages neu bauen
+        if: env.changed == '1'
+        run: |
+          curl -fsS -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pages/builds" || echo "Pages-Build konnte nicht angestoßen werden"
