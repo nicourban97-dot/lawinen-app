@@ -797,11 +797,11 @@ function historyTable(rows, date) {
   const any = rows.some(r => r.v && hasValues({ v: r.v }));
   if (!any) return el("p", { class: "status", text: "Für diese Tage gibt es kein Archiv der Messwerte. Die Messnetze speichern stündliche Werte nur während der Wintersaison. Aus dem letzten Winter reicht das Archiv für Tirol vom 18.01. bis 12.06.2026, für Bayern und Vorarlberg vom 02.03. bis 17.06.2026." });
   const minmax = rows.some(r => r.v && r.v.LT_MIN != null);
-  let sumN = 0, sumHS = 0;
+  let sumN = 0, sumHS = 0, hasN = false, hasHS = false;
   const body = rows.map(r => {
     const v = r.v || {}, sel = r.day === date;
-    if (!sel && v.N24 != null) sumN += v.N24;
-    if (!sel && v.HSD24 > 0) sumHS += v.HSD24;
+    if (!sel && v.N24 != null) { sumN += v.N24; hasN = true; }
+    if (!sel && v.HSD24 != null) { hasHS = true; if (v.HSD24 > 0) sumHS += v.HSD24; }
     return el("tr", { class: sel ? "sel" : null },
       el("td", { text: fmtDay(r.day).replace(".,", "") }),
       el("td", { text: v.HS == null ? "–" : `${num(v.HS)} cm` }),
@@ -811,7 +811,7 @@ function historyTable(rows, date) {
       el("td", {}, wind(v.WG, v.WR, v.WG_BOE)));
   });
   body.push(el("tr", { class: "sum" }, el("td", { text: "7 Tage" }), el("td"),
-    el("td", {}, el("span", { class: "sn", text: `+${num(sumHS)}` })), el("td", { text: `${num(sumN, 1)} mm` }), el("td"), el("td")));
+    el("td", {}, hasHS ? el("span", { class: "sn", text: `+${num(sumHS)}` }) : "–"), el("td", { text: hasN ? `${num(sumN, 1)} mm` : "–" }), el("td"), el("td")));
   return el("div", { class: "tablewrap" }, el("table", { class: "wx" },
     el("thead", {}, el("tr", {}, ["Tag", "Schnee", "± 24 h", "Nieders.", minmax ? "Temp. 24 h" : "Temp.", "Wind (Böen)"].map(x => el("th", { text: x })))),
     el("tbody", {}, body)));
@@ -843,7 +843,7 @@ function stationBlock(t, stations, date) {
         p.WG != null ? el("div", { class: "kpi" }, el("div", { class: "k", text: "Wind" }), el("div", { class: "v" }, wind(p.WG, p.WR)), p.WG_BOE != null ? el("div", { class: "s", text: `Böen ${num(p.WG_BOE)} km/h` }) : null) : null,
         val("RH", "Luftfeuchte", "%")),
       el("h3", { text: "Gemessen: die 7 Tage davor" }),
-      el("p", { class: "status", text: "Echte Messwerte dieser Station, jeweils um 6 Uhr (Winterzeit) mit den Summen der 24 Stunden davor. Die letzte Zeile ist der gewählte Tag." }),
+      el("p", { class: "status", text: "Echte Messwerte dieser Station, jeweils um 6 Uhr (Winterzeit) mit den Summen der 24 Stunden davor. Die letzte Zeile ist der gewählte Tag. In der Summe zählt beim Schnee nur der Zuwachs." }),
       hist,
       sel.plot ? el("div", {}, el("div", { class: "status", text: "Wochengrafik des Lawinenwarndiensts Tirol, aktuelle Woche: Schneehöhe und Niederschlag, Temperatur, Strahlung, Wind und Windrichtung. Tippen für die große Ansicht." }),
         el("a", { href: stationChart(sel.plot, 1100), target: "_blank", rel: "noopener" },
