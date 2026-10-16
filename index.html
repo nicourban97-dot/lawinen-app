@@ -12,6 +12,7 @@
 <title>Lawinen-App</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <style>
 /* Layout: one column. Powder alert, area cards with full bulletin, tour detail (bulletin + weather + station), tour list, settings. */
 :root {
@@ -173,6 +174,41 @@ form.add label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); 
 .aspects { display: flex; flex-wrap: wrap; gap: 6px; }
 .aspects label { display: flex; gap: 4px; align-items: center; color: var(--fg); font: 500 13px var(--font-mono); }
 footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+/* Map */
+.map-wrap { position: relative; height: min(68vh, 640px); min-height: 360px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); background: var(--surface-2); }
+#map { position: absolute; inset: 0; }
+.map-bar { position: absolute; top: 8px; left: 8px; right: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; pointer-events: none; z-index: 3; }
+.map-bar > * { pointer-events: auto; }
+.mspacer { flex: 1 1 auto; pointer-events: none; }
+.mbtn, .mseg button { font: 600 13px var(--font-body); padding: 6px 10px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
+.mbtn { border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+.mbtn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.mseg { display: inline-flex; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+.mseg button + button { border-left: 0; }
+.mseg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.mchip { font: 700 15px/1.2 var(--font-display); text-transform: uppercase; letter-spacing: .03em; background: var(--surface); color: var(--fg); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line); box-shadow: 0 1px 3px rgba(0,0,0,.18); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.legend { position: absolute; left: 8px; bottom: 36px; z-index: 3; background: color-mix(in srgb, var(--surface) 92%, transparent); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 12px; display: grid; gap: 2px; }
+.sw { display: inline-block; width: 14px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; border: 1px solid rgba(0,0,0,.25); }
+.mrow { flex: 1 0 100%; display: flex; justify-content: center; pointer-events: none; }
+.mmsg { background: var(--fg); color: var(--bg); font-size: 13px; padding: 6px 12px; border-radius: 99px; max-width: 100%; text-align: center; pointer-events: auto; }
+.map-wrap.full { position: fixed; inset: 0; z-index: 40; height: auto; min-height: 0; border-radius: 0; border: 0; }
+.map-wrap.full .map-bar { top: calc(8px + env(safe-area-inset-top, 0px)); left: max(8px, env(safe-area-inset-left, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); }
+.map-wrap.full .maplibregl-ctrl-bottom-right, .map-wrap.full .maplibregl-ctrl-bottom-left { margin-bottom: env(safe-area-inset-bottom, 0px); }
+html.noscroll, html.noscroll body { overflow: hidden; }
+.mpanel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.mpanel.sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; max-height: 55%; overflow-y: auto; background: var(--bg); border-top: 1px solid var(--line); padding: 12px max(12px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); box-shadow: 0 -4px 16px rgba(0,0,0,.2); }
+.filters { display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.frow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.flabel { font: 700 14px var(--font-display); text-transform: uppercase; letter-spacing: .04em; color: var(--muted); min-width: 92px; }
+.fchip { font: 500 13px var(--font-body); padding: 4px 10px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
+.fchip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.fchip .sw { margin-right: 5px; }
+.popup { display: grid; gap: 4px; font: 14px/1.4 var(--font-body); }
+.popup .top { display: flex; gap: 6px; align-items: center; }
+.maplibregl-popup-content { background: var(--surface); color: var(--fg); border-radius: 8px; }
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: var(--surface); }
+.maplibregl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color: var(--surface); }
+.maplibregl-popup-close-button { color: var(--fg); font-size: 18px; padding: 0 6px; }
 @media (max-width: 520px) { table.wx { font-size: 12px; } table.wx th, table.wx td { padding: 5px 4px; } .panel { padding: 10px; } .arrow { margin-right: 1px; } .hide-sm { display: none; } .card { grid-template-columns: 52px minmax(0,1fr); } .lvl .n { font-size: 32px; } .lvl .t { display: none; } .pdetail { grid-template-columns: 44px minmax(0,1fr); } .pdetail svg { width: 44px; height: 44px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -194,6 +230,25 @@ footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line)
 <div class="wrap">
 <main>
   <div class="status" id="status">Lade Lageberichte und Wetter …</div>
+  <section id="map-sec">
+    <h2>Karte</h2>
+    <div class="map-wrap" id="map-wrap">
+      <div id="map" role="region" aria-label="Karte der Lawinenwarnstufen"></div>
+      <div class="map-bar">
+        <button type="button" class="mbtn" id="m-back" hidden>Übersicht</button>
+        <span class="mchip" id="m-title">Übersicht</span>
+        <span class="mspacer"></span>
+        <div class="mseg" role="group" aria-label="Darstellung">
+          <button type="button" id="m-2d" aria-pressed="true">2D</button><button type="button" id="m-3d" aria-pressed="false">3D</button>
+        </div>
+        <button type="button" class="mbtn" id="m-filter" hidden>Filter</button>
+        <button type="button" class="mbtn" id="m-full" aria-pressed="false">Vollbild</button>
+        <div class="mrow"><div class="mmsg" id="m-msg" role="status" hidden></div></div>
+      </div>
+      <div class="legend" id="m-legend"></div>
+    </div>
+    <div class="mpanel" id="m-panel"></div>
+  </section>
   <section id="powder" hidden></section>
   <section>
     <h2>Lawinenlage</h2>
@@ -244,15 +299,16 @@ footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line)
     <a href="https://avalanche.report" target="_blank" rel="noopener">Lawinenwarndienst Tirol (avalanche.report)</a>,
     <a href="https://www.vorarlberg.at/lawinenbericht" target="_blank" rel="noopener">Lawinenwarndienst Vorarlberg</a>.
     Messstationen: Lawinenwarndienste Tirol, Bayern und Vorarlberg über avalanche.report und lawinen-warnung.eu, dazu die jeweils genannten Betreiber.
-    Wetter: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (Modelldaten, nicht-kommerzielle Nutzung).
-    Diese App ist eine Entscheidungshilfe. Sie ersetzt nicht den vollständigen Lagebericht und nicht die Beurteilung im Gelände. Version 0.2.1.
+    Wetter: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (Modelldaten, nicht-kommerzielle Nutzung). Karte: OpenTopoMap und OpenStreetMap-Mitwirkende, Gelände: Terrain Tiles (AWS Open Data), Teilgebiete: EAWS.
+    Diese App ist eine Entscheidungshilfe. Sie ersetzt nicht den vollständigen Lagebericht und nicht die Beurteilung im Gelände. Version 0.3.
   </footer>
 </main>
 </div>
 
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script>
 "use strict";
-const VERSION = "0.2.1";
+const VERSION = "0.3";
 const LEVELS = { no_snow: 0, no_rating: 0, low: 1, moderate: 2, considerable: 3, high: 4, very_high: 5 };
 const LEVEL_NAME = ["keine Angabe", "gering", "mäßig", "erheblich", "groß", "sehr groß"];
 const PROBLEM = {
@@ -871,7 +927,8 @@ async function renderTourDetail() {
   put(box, el("div", { class: "areas" },
     el("div", { class: "tour" },
       el("div", { class: "top" }, levelDot(ev.level), el("span", { class: "name", text: t.name }), tourBadge(ev),
-        t.example ? el("span", { class: "badge", text: "Beispiel, Angaben prüfen" }) : null),
+        t.example ? el("span", { class: "badge", text: "Beispiel, Angaben prüfen" }) : null,
+        t.lat != null ? el("span", { class: "acts" }, el("button", { class: "btn ghost", type: "button", onclick: () => focusTour(t), text: "Auf der Karte" })) : null),
       el("div", { class: "meta", text: `${regionName(t.region)} · Gipfel ${t.top} m${t.lat != null ? ` · ${t.lat.toFixed(4)}, ${t.lon.toFixed(4)}` : ""}` }),
       ev.notes.length ? el("ul", {}, ev.notes.map(n => el("li", { text: n }))) : null),
     bul, wxBox, stBox));
@@ -925,7 +982,335 @@ function fillRegionSelect() {
   for (const [id, name] of [...ids].sort((a, b) => a[1].localeCompare(b[1], "de"))) sel.append(el("option", { value: id, text: `${name} (${id})` }));
   if (cur) sel.value = cur;
 }
-function renderAll() { renderStatus(); renderAreas(); renderPowder(); renderTours(); fillRegionSelect(); renderTourDetail(); }
+function renderAll() { renderStatus(); renderAreas(); renderPowder(); renderTours(); fillRegionSelect(); renderTourDetail(); updateMap(); renderMapChrome(); }
+
+// ---------- map ----------
+// Overview: EAWS micro-regions coloured by the day's highest danger level. Tap a region: topographic map with
+// slope classes computed in the browser from Terrarium elevation tiles, filtered by aspect and elevation. Optional 3D terrain.
+const REGION_FILES = ["AT-07", "AT-08", "DE-BY", "IT-32-BZ", "IT-32-TN"].map(c => `https://regions.avalanches.org/micro-regions/${c}_micro-regions.geojson.json`);
+const REGION_NAMES_URL = "https://regions.avalanches.org/micro-regions_names/de.json";
+const DEM_URL = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png";
+const LEVEL_COLORS = ["#c9d1d6", "#ccff66", "#ffff00", "#ff9900", "#ff0000", "#a30000"];
+const SLOPE_CLASSES = [
+  { label: "30–35°", color: [242, 214, 0] },
+  { label: "35–40°", color: [255, 140, 0] },
+  { label: "40–45°", color: [224, 32, 27] },
+  { label: "über 45°", color: [138, 43, 226] }
+];
+const SLOPE_MINZOOM = 12;
+const levelMatch = ["match", ["get", "level"], 1, LEVEL_COLORS[1], 2, LEVEL_COLORS[2], 3, LEVEL_COLORS[3], 4, LEVEL_COLORS[4], 5, LEVEL_COLORS[5], LEVEL_COLORS[0]];
+const mapState = {
+  map: null, ready: false, mode: "overview", region: null, three: false, full: false,
+  shapes: null, names: {}, rev: 0,
+  filter: Object.assign({ slope: true, slopes: [true, true, true, true], aspects: [...ASPECTS], minElev: 0 }, store.get("lawinenapp.mapfilter.v1", {}))
+};
+const regionLabel = id => (state.regions.get(id) || {}).name || mapState.names[id] || STATIC_REGION_NAMES[id] || id;
+
+async function loadRegionShapes() {
+  if (mapState.shapes) return mapState.shapes;
+  const [names, ...files] = await Promise.allSettled([getJSON(REGION_NAMES_URL), ...REGION_FILES.map(u => getJSON(u))]);
+  if (names.status === "fulfilled") mapState.names = names.value || {};
+  mapState.shapes = files.filter(f => f.status === "fulfilled").flatMap(f => f.value.features || []);
+  return mapState.shapes;
+}
+// Region outlines change between seasons; use the version valid on the chosen day.
+function shapesFor(date) {
+  return (mapState.shapes || []).filter(f => {
+    const p = f.properties || {};
+    return (!p.start_date || p.start_date <= date) && (!p.end_date || p.end_date > date);
+  });
+}
+function dangerGeoJSON() {
+  return { type: "FeatureCollection", features: shapesFor(state.date).map(f => {
+    const id = f.properties.id, r = state.regions.get(id);
+    return { type: "Feature", geometry: f.geometry, properties: { id, level: r ? maxLevel(r.bulletin) : 0 } };
+  }) };
+}
+function toursGeoJSON() {
+  return { type: "FeatureCollection", features: state.tours.filter(t => t.lat != null).map(t => ({
+    type: "Feature", geometry: { type: "Point", coordinates: [t.lon, t.lat] },
+    properties: { id: t.id, level: evaluateTour(t).level ?? 0 } })) };
+}
+function bboxOf(geom) {
+  let w = 180, s = 90, e = -180, n = -90;
+  const walk = c => { if (typeof c[0] === "number") { w = Math.min(w, c[0]); e = Math.max(e, c[0]); s = Math.min(s, c[1]); n = Math.max(n, c[1]); } else c.forEach(walk); };
+  walk(geom.coordinates);
+  return [[w, s], [e, n]];
+}
+
+// --- slope tiles from elevation data ---
+const makeCanvas = n => typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(n, n) : Object.assign(document.createElement("canvas"), { width: n, height: n });
+async function canvasToBuffer(c) {
+  const blob = c.convertToBlob ? await c.convertToBlob({ type: "image/png" }) : await new Promise(r => c.toBlob(r, "image/png"));
+  return blob.arrayBuffer();
+}
+const demCache = new Map();
+function demTile(z, x, y) {
+  const key = `${z}/${x}/${y}`;
+  if (!demCache.has(key)) {
+    const p = fetch(DEM_URL.replace("{z}", z).replace("{x}", x).replace("{y}", y))
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.blob(); })
+      .then(b => createImageBitmap(b, { colorSpaceConversion: "none", premultiplyAlpha: "none" }))
+      .then(bmp => {
+        const c = makeCanvas(256), g = c.getContext("2d", { willReadFrequently: true });
+        g.drawImage(bmp, 0, 0);
+        const d = g.getImageData(0, 0, 256, 256).data, h = new Float32Array(65536);
+        for (let i = 0; i < 65536; i++) h[i] = d[i * 4] * 256 + d[i * 4 + 1] + d[i * 4 + 2] / 256 - 32768;
+        return h;
+      });
+    p.catch(() => demCache.delete(key));
+    demCache.set(key, p);
+    if (demCache.size > 300) demCache.delete(demCache.keys().next().value);
+  }
+  return demCache.get(key);
+}
+async function slopeTile(z, x, y, f) {
+  const h = await demTile(z, x, y);
+  const lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * (y + 0.5) / 2 ** z)));
+  const px = 40075016.686 * Math.cos(lat) / (256 * 2 ** z);
+  const c = makeCanvas(256), g = c.getContext("2d"), img = g.createImageData(256, 256), o = img.data;
+  const asp = new Set(f.aspects);
+  const at = (i, j) => h[j * 256 + i];
+  for (let j = 0; j < 256; j++) {
+    const j0 = Math.max(0, j - 1), j1 = Math.min(255, j + 1);
+    for (let i = 0; i < 256; i++) {
+      if (at(i, j) < f.minElev) continue;
+      const i0 = Math.max(0, i - 1), i1 = Math.min(255, i + 1);
+      // Horn's 3x3 kernel smooths the stair steps of the elevation data; spans shrink at the tile edge.
+      const sx = (i1 - i0) * px, sy = (j1 - j0) * px;
+      const dx = ((at(i1, j0) + 2 * at(i1, j) + at(i1, j1)) - (at(i0, j0) + 2 * at(i0, j) + at(i0, j1))) / (4 * sx);   // rise towards east
+      const dy = ((at(i0, j1) + 2 * at(i, j1) + at(i1, j1)) - (at(i0, j0) + 2 * at(i, j0) + at(i1, j0))) / (4 * sy);   // rise towards south
+      const s = Math.atan(Math.hypot(dx, dy)) * 180 / Math.PI;
+      if (s < 30) continue;
+      const k = s >= 45 ? 3 : s >= 40 ? 2 : s >= 35 ? 1 : 0;
+      if (!f.slopes[k]) continue;
+      let br = Math.atan2(-dx, dy) * 180 / Math.PI;           // direction the slope faces, 0 = north
+      if (br < 0) br += 360;
+      if (!asp.has(ASPECTS[Math.round(br / 45) % 8])) continue;
+      const q = (j * 256 + i) * 4, col = SLOPE_CLASSES[k].color;
+      o[q] = col[0]; o[q + 1] = col[1]; o[q + 2] = col[2]; o[q + 3] = 175;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  return canvasToBuffer(c);
+}
+
+// --- map setup ---
+function showMapMsg(text) { const m = $("#m-msg"); m.textContent = text || ""; m.hidden = !text; }
+function initMap() {
+  if (!window.maplibregl) { showMapMsg("Die Karte konnte nicht geladen werden. Bitte die Internetverbindung prüfen."); return; }
+  maplibregl.addProtocol("slope", async params => {
+    const m = params.url.match(/slope:\/\/(\d+)\/(\d+)\/(\d+)/);
+    return { data: await slopeTile(Number(m[1]), Number(m[2]), Number(m[3]), mapState.filter) };
+  });
+  const map = new maplibregl.Map({
+    container: "map", attributionControl: { compact: true }, maxPitch: 75,
+    bounds: [[9.6, 46.75], [12.95, 47.75]], fitBoundsOptions: { padding: 10 },
+    style: {
+      version: 8,
+      sources: {
+        topo: { type: "raster", tiles: ["a", "b", "c"].map(s => `https://${s}.tile.opentopomap.org/{z}/{x}/{y}.png`), tileSize: 256, maxzoom: 17,
+          attribution: 'Karte © <a href="https://opentopomap.org" target="_blank" rel="noopener">OpenTopoMap</a> (CC-BY-SA), Daten © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>-Mitwirkende · Gelände: Terrain Tiles (AWS Open Data) · Gebiete: EAWS' },
+        dem3d: { type: "raster-dem", tiles: [DEM_URL], encoding: "terrarium", tileSize: 256, maxzoom: 15 },
+        // Computed at zoom 12 (about 26 m per pixel, close to the resolution of the elevation data) and enlarged above.
+        slope: { type: "raster", tiles: ["slope://{z}/{x}/{y}?r=0"], tileSize: 256, minzoom: SLOPE_MINZOOM, maxzoom: 12 },
+        danger: { type: "geojson", data: { type: "FeatureCollection", features: [] } },
+        tours: { type: "geojson", data: { type: "FeatureCollection", features: [] } }
+      },
+      layers: [
+        { id: "topo", type: "raster", source: "topo", paint: { "raster-saturation": -0.75, "raster-opacity": 0.9 } },
+        { id: "danger-fill", type: "fill", source: "danger", paint: { "fill-color": levelMatch, "fill-opacity": 0.55 } },
+        { id: "slope", type: "raster", source: "slope", minzoom: SLOPE_MINZOOM, layout: { visibility: "none" } },
+        { id: "danger-line", type: "line", source: "danger", paint: { "line-color": "#2b3a45", "line-width": 0.7, "line-opacity": 0.7 } },
+        { id: "sel-line", type: "line", source: "danger", filter: ["==", ["get", "id"], "-"], paint: { "line-color": "#14202b", "line-width": 3.5 } },
+        { id: "tours", type: "circle", source: "tours", paint: { "circle-radius": 7, "circle-color": levelMatch, "circle-stroke-color": "#14202b", "circle-stroke-width": 2 } }
+      ]
+    }
+  });
+  map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right");
+  map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
+  map.on("load", async () => {
+    mapState.ready = true;
+    const attrib = map.getContainer().querySelector(".maplibregl-ctrl-attrib");
+    if (attrib) attrib.classList.remove("maplibregl-compact-show");
+    await loadRegionShapes();
+    if (!mapState.shapes.length) showMapMsg("Die Umrisse der Teilgebiete konnten nicht geladen werden.");
+    updateMap();
+  });
+  map.on("click", e => {
+    const t = map.queryRenderedFeatures(e.point, { layers: ["tours"] })[0];
+    if (t) { tourPopup(t.properties.id); return; }
+    const f = map.queryRenderedFeatures(e.point, { layers: ["danger-fill"] })[0];
+    if (f && f.properties.id !== mapState.region) enterRegion(f.properties.id);
+  });
+  map.on("mousemove", e => {
+    map.getCanvas().style.cursor = map.queryRenderedFeatures(e.point, { layers: ["tours", "danger-fill"] }).length ? "pointer" : "";
+  });
+  map.on("zoomend", updateZoomHint);
+  // MapLibre 4 sometimes keeps the camera height frozen at sea level after an animation with terrain.
+  // After each move, compare it with the ground below the centre and recompute if it is off.
+  map.on("moveend", () => {
+    if (!map.terrain || map.isMoving()) return;
+    const ground = map.terrain.getElevationForLngLatZoom(map.getCenter(), Math.floor(map.getZoom()));
+    if (Math.abs(map.transform.elevation - ground) < 30) return;
+    if (map._elevationFreeze) { map._elevationFreeze = false; map.triggerRepaint(); }
+    setTimeout(() => {
+      if (!map.terrain || map.isMoving() || Math.abs(map.transform.elevation - ground) < 30) return;
+      const spec = { source: "dem3d", exaggeration: 1.3 };
+      map.setTerrain(null); map.setTerrain(spec);
+    }, 120);
+  });
+  map.on("error", e => { if (e && e.error && /slope/.test(String(e.error.message || ""))) console.warn(e.error); });
+  mapState.map = map;
+  renderMapChrome();
+}
+function updateMap() {
+  const m = mapState.map;
+  if (!m || !mapState.ready || !mapState.shapes) return;
+  m.getSource("danger").setData(dangerGeoJSON());
+  m.getSource("tours").setData(toursGeoJSON());
+  applyMode();
+}
+function applyMode() {
+  const m = mapState.map; if (!m || !mapState.ready) return;
+  const region = mapState.mode === "region";
+  m.setPaintProperty("topo", "raster-saturation", region ? 0 : -0.75);
+  m.setPaintProperty("topo", "raster-opacity", region ? 1 : 0.9);
+  m.setPaintProperty("danger-fill", "fill-opacity", region
+    ? ["case", ["==", ["get", "id"], mapState.region], 0, 0.3]
+    : ["case", ["==", ["get", "level"], 0], 0.15, 0.55]);
+  m.setFilter("sel-line", ["==", ["get", "id"], region ? mapState.region : "-"]);
+  m.setLayoutProperty("slope", "visibility", region && mapState.filter.slope ? "visible" : "none");
+  renderMapChrome();
+  updateZoomHint();
+}
+function updateZoomHint() {
+  const m = mapState.map; if (!m) return;
+  const need = mapState.mode === "region" && mapState.filter.slope && m.getZoom() < SLOPE_MINZOOM - 0.01;
+  showMapMsg(need ? "Für die Hangneigung näher heranzoomen." : "");
+}
+function refreshSlope() {
+  const m = mapState.map; if (!m || !mapState.ready) return;
+  store.set("lawinenapp.mapfilter.v1", mapState.filter);
+  mapState.rev++;
+  const src = m.getSource("slope");
+  if (src && src.setTiles) src.setTiles([`slope://{z}/{x}/{y}?r=${mapState.rev}`]);
+  applyMode();
+}
+function enterRegion(id, focus) {
+  const m = mapState.map; if (!m) return;
+  mapState.mode = "region"; mapState.region = id;
+  const shape = shapesFor(state.date).find(f => f.properties.id === id);
+  if (focus) m.flyTo({ center: focus, zoom: 13 });
+  else if (shape) m.fitBounds(bboxOf(shape.geometry), { padding: 40, maxZoom: 12.5 });
+  applyMode();
+}
+function leaveRegion() {
+  const m = mapState.map; if (!m) return;
+  mapState.mode = "overview"; mapState.region = null;
+  m.fitBounds([[9.6, 46.75], [12.95, 47.75]], { padding: 10 });
+  applyMode();
+}
+function set3D(on) {
+  const m = mapState.map; if (!m || !mapState.ready) return;
+  mapState.three = on;
+  // Terrain is switched on after the tilt: set during a camera animation, the camera height stays at sea level.
+  if (on) { m.easeTo({ pitch: 60, duration: 700 }); m.once("moveend", () => { if (mapState.three) m.setTerrain({ source: "dem3d", exaggeration: 1.3 }); }); }
+  else { m.setTerrain(null); m.easeTo({ pitch: 0, bearing: 0, duration: 600 }); }
+  renderMapChrome();
+}
+function setFull(on) {
+  mapState.full = on;
+  const wrap = $("#map-wrap"), panel = $("#m-panel");
+  wrap.classList.toggle("full", on);
+  document.documentElement.classList.toggle("noscroll", on);
+  if (on) { wrap.append(panel); panel.classList.add("sheet"); panel.hidden = true; }
+  else { panel.classList.remove("sheet"); panel.hidden = false; wrap.after(panel); }
+  renderMapChrome();
+  setTimeout(() => mapState.map && mapState.map.resize(), 50);
+}
+function tourPopup(id) {
+  const t = state.tours.find(x => x.id === id), m = mapState.map; if (!t || !m) return;
+  const ev = evaluateTour(t);
+  const content = el("div", { class: "popup" },
+    el("div", { class: "top" }, levelDot(ev.level), el("b", { text: t.name })),
+    el("div", { class: "status", text: `${regionLabel(t.region)} · ${t.top} m` }), tourBadge(ev),
+    el("div", {}, el("button", { class: "btn ghost", type: "button", onclick: () => showTour(t.id), text: "Tour im Detail" })));
+  new maplibregl.Popup({ closeButton: true, maxWidth: "260px" }).setLngLat([t.lon, t.lat]).setDOMContent(content).addTo(m);
+}
+function focusTour(t) {
+  if (!mapState.map || t.lat == null) return;
+  if (mapState.full) setFull(false);
+  enterRegion(t.region, [t.lon, t.lat]);
+  $("#map-sec").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+// Aspects and lowest elevation of the bulletin's avalanche problems. Treeline counted as 1800 m to stay cautious.
+function dangerPreset(b) {
+  const probs = (b.avalancheProblems || []).filter(p => !["favourable_situation", "no_distinct_avalanche_problem"].includes(p.problemType));
+  if (!probs.length) return null;
+  const aspects = ASPECTS.filter(a => probs.some(p => (p.aspects || ASPECTS).includes(a)));
+  let minElev = Infinity, treeline = false;
+  for (const p of probs) {
+    const lb = p.elevation && p.elevation.lowerBound;
+    if (!lb) { minElev = 0; continue; }
+    if (lb === "treeline") { treeline = true; minElev = Math.min(minElev, 1800); } else minElev = Math.min(minElev, Number(lb));
+  }
+  if (!Number.isFinite(minElev)) minElev = 0;
+  return { aspects, minElev, treeline };
+}
+const ELEV_STEPS = [0, 1000, 1200, 1400, 1500, 1600, 1800, 2000, 2200, 2400, 2500, 2600, 2800, 3000];
+function renderMapChrome() {
+  const region = mapState.mode === "region";
+  $("#m-back").hidden = !region;
+  $("#m-title").textContent = region ? regionLabel(mapState.region) : "Übersicht";
+  $("#m-3d").setAttribute("aria-pressed", String(mapState.three));
+  $("#m-2d").setAttribute("aria-pressed", String(!mapState.three));
+  $("#m-full").setAttribute("aria-pressed", String(mapState.full));
+  $("#m-full").textContent = mapState.full ? "Schließen" : "Vollbild";
+  $("#m-filter").hidden = !(mapState.full && region);
+  const leg = $("#m-legend");
+  if (region && mapState.filter.slope) put(leg, el("b", { text: "Hangneigung" }),
+    SLOPE_CLASSES.map((c, k) => mapState.filter.slopes[k] ? el("div", {}, el("span", { class: "sw", style: `background:rgb(${c.color.join(",")})` }), c.label) : null));
+  else put(leg, el("b", { text: "Gefahrenstufe" }),
+    [1, 2, 3, 4, 5].map(l => el("div", {}, el("span", { class: "sw", style: `background:${LEVEL_COLORS[l]}` }), `${l} ${LEVEL_NAME[l]}`)),
+    el("div", {}, el("span", { class: "sw", style: `background:${LEVEL_COLORS[0]}` }), "kein Bericht"));
+  renderMapPanel();
+}
+function renderMapPanel() {
+  const box = $("#m-panel");
+  if (mapState.mode !== "region") {
+    const none = ![...state.regions.keys()].length;
+    put(box, el("p", { class: "status", text: "Tippe auf ein Teilgebiet, um es als topografische Karte mit Hangneigung zu öffnen. Die Farbe zeigt die höchste Gefahrenstufe des Teilgebiets am gewählten Tag, unabhängig von der Höhe." }),
+      none ? el("p", { class: "status", text: "Für dieses Datum gibt es keine Lageberichte, deshalb sind alle Gebiete grau." }) : null);
+    return;
+  }
+  const id = mapState.region, r = state.regions.get(id), f = mapState.filter, lvl = r ? maxLevel(r.bulletin) : null;
+  const chip = (on, label, onclick, sw) => el("button", { type: "button", class: "fchip", "aria-pressed": String(on), onclick },
+    sw ? el("span", { class: "sw", style: `background:${sw}` }) : null, label);
+  const preset = r ? dangerPreset(r.bulletin) : null;
+  const usePreset = () => { f.aspects = preset.aspects; f.minElev = preset.minElev; f.slope = true; f.slopes = [true, true, true, true]; refreshSlope(); };
+  if (!ELEV_STEPS.includes(f.minElev)) ELEV_STEPS.push(f.minElev), ELEV_STEPS.sort((a, b) => a - b);
+  put(box,
+    el("div", { class: "tour" },
+      el("div", { class: "top" }, levelDot(lvl), el("span", { class: "name", text: regionLabel(id) }),
+        lvl >= 4 ? el("span", { class: "badge stop", text: "Keine Tourenvorschläge" }) : lvl === 3 ? el("span", { class: "badge warn", text: "Warnung Stufe 3" }) : null),
+      el("div", { class: "meta", text: r ? paras(r.bulletin.highlights || (r.bulletin.avalancheActivity && r.bulletin.avalancheActivity.highlights) || "").join(" ") : "Kein Lagebericht für dieses Datum." })),
+    el("div", { class: "filters" },
+      el("div", { class: "frow" }, el("span", { class: "flabel", text: "Hangneigung" }),
+        chip(f.slope, f.slope ? "eingeblendet" : "ausgeblendet", () => { f.slope = !f.slope; refreshSlope(); }),
+        f.slope ? SLOPE_CLASSES.map((c, k) => chip(f.slopes[k], c.label, () => { f.slopes[k] = !f.slopes[k]; refreshSlope(); }, `rgb(${c.color.join(",")})`)) : null),
+      f.slope ? el("div", { class: "frow" }, el("span", { class: "flabel", text: "Exposition" }),
+        ASPECTS.map(a => chip(f.aspects.includes(a), ASPECT_DE[a], () => {
+          f.aspects = f.aspects.includes(a) ? f.aspects.filter(x => x !== a) : ASPECTS.filter(x => x === a || f.aspects.includes(x)); refreshSlope(); })),
+        chip(f.aspects.length === 8, "alle", () => { f.aspects = [...ASPECTS]; refreshSlope(); })) : null,
+      f.slope ? el("div", { class: "frow" }, el("label", { class: "flabel", for: "m-elev", text: "Höhe" }),
+        el("select", { id: "m-elev", onchange: e => { f.minElev = Number(e.target.value); refreshSlope(); } },
+          ELEV_STEPS.map(v => el("option", { value: v, text: v ? `über ${v} m` : "alle Höhen", selected: f.minElev === v })))) : null,
+      preset ? el("div", { class: "frow" }, el("button", { class: "btn", type: "button", onclick: usePreset, text: "Gefahrenstellen laut Lagebericht" }),
+        el("span", { class: "status", text: `Setzt ${preset.aspects.length === 8 ? "alle Expositionen" : preset.aspects.map(a => ASPECT_DE[a]).join(", ")} und ${preset.minElev ? `über ${preset.minElev} m` : "alle Höhen"} aus den Lawinenproblemen des Berichts${preset.treeline ? ", die Waldgrenze als 1800 m" : ""}.` })) : null,
+      el("p", { class: "status", text: "Die Hangneigung berechnet die App aus einem Geländemodell mit in den Alpen meist rund 30 m Auflösung. Kurze Steilstufen und schmale Rinnen werden dabei unterschätzt. Gut für die Grobplanung, keine Grundlage für die Spuranlage." })),
+    r ? el("details", { class: "panel" }, el("summary", { text: "Vollständiger Lagebericht" }), bulletinDetail(id)) : null);
+}
 
 // ---------- actions ----------
 async function load() {
@@ -945,7 +1330,7 @@ function setDate(d) {
   $("#btn-tomorrow").setAttribute("aria-pressed", String(d === addDays(today, 1)));
   load();
 }
-function saveTours() { store.set("lawinenapp.tours.v1", state.tours); renderTours(); renderPowder(); renderTourDetail(); }
+function saveTours() { store.set("lawinenapp.tours.v1", state.tours); renderTours(); renderPowder(); renderTourDetail(); updateMap(); }
 // Two taps instead of a browser dialog: first tap arms, second tap within 4 s deletes.
 const armed = new Map();
 function removeTour(id, btn) {
@@ -1001,6 +1386,13 @@ $("#add-form").addEventListener("submit", e => {
 $("#s-thr").value = state.threshold;
 $("#s-thr").addEventListener("change", e => { state.threshold = Number(e.target.value) || 20; store.set("lawinenapp.threshold.v1", state.threshold); renderPowder(); });
 $("#settings").addEventListener("submit", e => e.preventDefault());
+$("#m-back").addEventListener("click", leaveRegion);
+$("#m-2d").addEventListener("click", () => set3D(false));
+$("#m-3d").addEventListener("click", () => set3D(true));
+$("#m-full").addEventListener("click", () => setFull(!mapState.full));
+$("#m-filter").addEventListener("click", () => { const p = $("#m-panel"); p.hidden = !p.hidden; });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && mapState.full) setFull(false); });
+try { initMap(); } catch (e) { showMapMsg("Die Karte konnte nicht gestartet werden."); console.error(e); }
 setDate(ymd(new Date()));
 </script>
 </body>
