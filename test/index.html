@@ -1479,7 +1479,7 @@ function applyMode() {
   const selExpr = mapState.region ? ["==", ["get", "id"], mapState.region]
     : mapState.areaIds && mapState.areaIds.length ? ["in", ["get", "id"], ["literal", mapState.areaIds]] : ["==", ["get", "id"], "-"];
   m.setPaintProperty("danger-fill", "fill-opacity", region
-    ? ["case", selExpr, 0, 0.3]
+    ? ["case", selExpr, 0, 0.18]
     : ["interpolate", ["linear"], ["zoom"], 10, ["case", ["==", ["get", "level"], 0], 0.15, 0.55], 12.5, ["case", ["==", ["get", "level"], 0], 0.05, 0.2]]);
   m.setFilter("sel-line", region ? selExpr : ["==", ["get", "id"], "-"]);
   m.setLayoutProperty("slope", "visibility", vis(f.slope));
@@ -1618,11 +1618,6 @@ function renderMapPanel() {
       chip(f.base === "relief", "Gelände", () => { f.base = "relief"; mapState.baseAuto = false; saveFilter(); }),
       chip(f.base === "sat", "Satellit", () => { f.base = "sat"; mapState.baseAuto = false; saveFilter(); }),
       el("span", { class: "status", text: "In 3D wechselt die Karte von Topo auf Gelände, ohne Höhenlinien." })),
-    false ? el("div", { class: "tour" },
-      el("div", { class: "top" }, levelDot(lvl), el("span", { class: "name", text: regionLabel(id) }),
-        lvl >= 4 ? el("span", { class: "badge stop", text: "Keine Tourenvorschläge" }) : lvl === 3 ? el("span", { class: "badge warn", text: "Warnung Stufe 3" }) : null),
-      el("div", { class: "meta", text: r ? paras(r.bulletin.highlights || (r.bulletin.avalancheActivity && r.bulletin.avalancheActivity.highlights) || "").join(" ") : "Kein Lagebericht für dieses Datum." }))
-      : el("p", { class: "status", text: "Tippe auf ein Teilgebiet, um es als topografische Karte zu öffnen. Die Farbe zeigt die höchste Gefahrenstufe des Teilgebiets am gewählten Tag, unabhängig von der Höhe." }),
     ![...state.regions.keys()].length ? el("p", { class: "status", text: "Für dieses Datum gibt es keine Lageberichte, deshalb sind alle Gebiete grau." }) : null,
     el("div", { class: "filters" },
       el("div", { class: "frow" }, el("span", { class: "flabel", text: "Ebenen" }),
@@ -2006,6 +2001,7 @@ $("#m-title").addEventListener("click", () => mapState.region && openRegionSheet
 put($("#m-region"), el("option", { value: "all", text: "Ganzer Bereich" }), AREAS.map(a => el("option", { value: a.key, text: a.name })));
 $("#m-region").addEventListener("change", e => selectArea(e.target.value));
 $("#m-legend").addEventListener("click", () => $("#m-legend").classList.toggle("mini"));
+if (window.matchMedia("(max-width: 520px)").matches) $("#m-legend").classList.add("mini");
 $("#m-2d").addEventListener("click", () => set3D(false));
 $("#m-3d").addEventListener("click", () => set3D(true));
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#sheet").hidden) closeSheet(); });
