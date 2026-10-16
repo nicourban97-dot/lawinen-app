@@ -21,7 +21,20 @@ async function overpass(query) {
   throw last;
 }
 const r5 = v => Math.round(v * 1e5) / 1e5;
-const line = g => g.map(p => [r5(p.lon), r5(p.lat)]);
+// Douglas-Peucker, tolerance in degrees (5e-5 is about 4 to 5 m in the Alps).
+function simplify(pts, tol = 5e-5) {
+  if (pts.length < 3) return pts;
+  const keepIdx = new Uint8Array(pts.length); keepIdx[0] = keepIdx[pts.length - 1] = 1;
+  const stack = [[0, pts.length - 1]];
+  while (stack.length) {
+    const [a, b] = stack.pop(); let max = 0, idx = -1;
+    const [x1, y1] = pts[a], [x2, y2] = pts[b], dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1e-12;
+    for (let i = a + 1; i < b; i++) { const d = Math.abs(dy * pts[i][0] - dx * pts[i][1] + x2 * y1 - y2 * x1) / len; if (d > max) { max = d; idx = i; } }
+    if (max > tol) { keepIdx[idx] = 1; stack.push([a, idx], [idx, b]); }
+  }
+  return pts.filter((_, i) => keepIdx[i]);
+}
+const line = g => simplify(g.map(p => [r5(p.lon), r5(p.lat)]));
 const keep = (tags, keys) => Object.fromEntries(keys.filter(k => tags[k] != null).map(k => [k, tags[k]]));
 
 // Join open way pieces into closed rings (for multipolygon relations).
@@ -54,7 +67,8 @@ async function routes() {
   for (const e of j.elements) if (e.type === "relation") for (const m of e.members || []) if (m.type === "way") inRelation.add(m.ref);
   for (const e of j.elements) {
     if (e.type === "way" && e.geometry && e.tags && e.tags["piste:type"] === "skitour") {
-      feats.push({ type: "Feature", id: `w${e.id}`, properties: { osm: `way/${e.id}`, ...keep(e.tags, ROUTE_TAGS), part: inRelation.has(e.id) || undefined },
+      if (inRelation.has(e.id)) continue; // drawn as part of its route relation
+      feats.push({ type: "Feature", id: `w${e.id}`, properties: { osm: `way/${e.id}`, ...keep(e.tags, ROUTE_TAGS) },
         geometry: { type: "LineString", coordinates: line(e.geometry) } });
     } else if (e.type === "relation" && e.tags) {
       const t = e.tags;
@@ -70,7 +84,8 @@ async function routes() {
 
 const ZONE_TAGS = ["name", "protection_title", "protect_class", "description", "seasonal", "access", "access:conditional", "ski", "ski:conditional",
   "opening_hours", "operator", "website", "related_law", "hazard", "start_date", "note", "leisure", "boundary"];
-const WILD = /wild|schon|ruhe|winter|habitat|raufu|auerhuhn|birkhuhn|gams|steinbock|einstand/i;
+const WILD = /schongebiet|schutzzone|wildruhe|ruhezone|wildschutz|wald-wild|gebietsverbot|wegegebot|wild-europaschutz|wildlife|raufu|auerhuhn|birkhuhn|einstand/i;
+const NOT_WILD = /flora|fauna-flora|naturpark|naturdenkmal|wiesenbr|fischlaich|natura 2000/i;
 async function zones() {
   const q = `[out:json][timeout:600];(way["boundary"="protected_area"](${BBOX});relation["boundary"="protected_area"](${BBOX});way["leisure"="nature_reserve"](${BBOX});relation["leisure"="nature_reserve"](${BBOX}););out geom;`;
   const j = await overpass(q);
@@ -78,7 +93,7 @@ async function zones() {
   for (const e of j.elements) {
     const t = e.tags || {};
     const text = [t.name, t.protection_title, t.description, t["protection_title:de"], t.note].filter(Boolean).join(" ");
-    const wild = WILD.test(text) || t.protect_class === "14" || !!t["ski:conditional"] || !!t["access:conditional"] || t.seasonal === "winter";
+    const wild = !NOT_WILD.test(t.protection_title || "") && (WILD.test(text) || t.seasonal === "winter" || !!t["ski:conditional"] || /winter|dec|nov|jan/i.test(t["access:conditional"] || ""));
     const key = `${t.protect_class || "-"} | ${t.protection_title || "-"}`;
     stats[key] = (stats[key] || 0) + 1;
     if (!wild) continue;
