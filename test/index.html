@@ -1075,8 +1075,10 @@ async function slopeTile(z, x, y, f) {
     for (let i = 0; i < 256; i++) {
       if (at(i, j) < f.minElev) continue;
       const i0 = Math.max(0, i - 1), i1 = Math.min(255, i + 1);
-      const dx = (at(i1, j) - at(i0, j)) / ((i1 - i0) * px);   // rise towards east
-      const dy = (at(i, j1) - at(i, j0)) / ((j1 - j0) * px);   // rise towards south
+      // Horn's 3x3 kernel smooths the stair steps of the elevation data; spans shrink at the tile edge.
+      const sx = (i1 - i0) * px, sy = (j1 - j0) * px;
+      const dx = ((at(i1, j0) + 2 * at(i1, j) + at(i1, j1)) - (at(i0, j0) + 2 * at(i0, j) + at(i0, j1))) / (4 * sx);   // rise towards east
+      const dy = ((at(i0, j1) + 2 * at(i, j1) + at(i1, j1)) - (at(i0, j0) + 2 * at(i, j0) + at(i1, j0))) / (4 * sy);   // rise towards south
       const s = Math.atan(Math.hypot(dx, dy)) * 180 / Math.PI;
       if (s < 30) continue;
       const k = s >= 45 ? 3 : s >= 40 ? 2 : s >= 35 ? 1 : 0;
@@ -1109,7 +1111,8 @@ function initMap() {
         topo: { type: "raster", tiles: ["a", "b", "c"].map(s => `https://${s}.tile.opentopomap.org/{z}/{x}/{y}.png`), tileSize: 256, maxzoom: 17,
           attribution: 'Karte © <a href="https://opentopomap.org" target="_blank" rel="noopener">OpenTopoMap</a> (CC-BY-SA), Daten © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>-Mitwirkende · Gelände: Terrain Tiles (AWS Open Data) · Gebiete: EAWS' },
         dem3d: { type: "raster-dem", tiles: [DEM_URL], encoding: "terrarium", tileSize: 256, maxzoom: 15 },
-        slope: { type: "raster", tiles: ["slope://{z}/{x}/{y}?r=0"], tileSize: 256, minzoom: SLOPE_MINZOOM, maxzoom: 14 },
+        // Computed at zoom 12 (about 26 m per pixel, close to the resolution of the elevation data) and enlarged above.
+        slope: { type: "raster", tiles: ["slope://{z}/{x}/{y}?r=0"], tileSize: 256, minzoom: SLOPE_MINZOOM, maxzoom: 12 },
         danger: { type: "geojson", data: { type: "FeatureCollection", features: [] } },
         tours: { type: "geojson", data: { type: "FeatureCollection", features: [] } }
       },
@@ -1127,6 +1130,8 @@ function initMap() {
   map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
   map.on("load", async () => {
     mapState.ready = true;
+    const attrib = map.getContainer().querySelector(".maplibregl-ctrl-attrib");
+    if (attrib) attrib.classList.remove("maplibregl-compact-show");
     await loadRegionShapes();
     if (!mapState.shapes.length) showMapMsg("Die Umrisse der Teilgebiete konnten nicht geladen werden.");
     updateMap();
