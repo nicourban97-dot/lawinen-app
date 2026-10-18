@@ -2678,6 +2678,8 @@ async function fetchRouteSnow(feats, date) {
         routeSnow.set(`${date}|${f.properties.osm}`, { past: v[0] + v[1] + v[2], today: v[3] });
       });
     } catch (e) { /* leave without snow numbers */ }
+    // Open-Meteo counts every point as a call: a short pause between packets of 50.
+    if (i + 50 < todo.length) await new Promise(r => setTimeout(r, 300));
   }
 }
 function finderAreaOk(region) {
@@ -2706,6 +2708,8 @@ let finderToken = 0;
 async function renderFinder() {
   const list = $("#f-list"), sum = $("#f-sum"), token = ++finderToken, date = state.date;
   let g;
+  // Distance filter or sort without a position yet: wait for it instead of showing an unfiltered list.
+  if ((finder.distMax > 0 || finder.sort === "dist") && !state.pos) { put(sum, "Frage den Standort für die Entfernung ab …"); put(list); return; }
   put(sum, "Lade Skitouren …");
   try { g = await loadRoutes(await areaBox(finder.area)); } catch (e) { put(sum, "Die Skitouren konnten nicht geladen werden."); put(list); return; }
   if (token !== finderToken) return;
@@ -2740,12 +2744,18 @@ async function renderFinder() {
   }
   // New snow: for every candidate when it filters or sorts, otherwise for the ones shown.
   rows.sort((a, b) => a.f.properties.st.asc - b.f.properties.st.asc);
-  const needAll = finder.snowMin > 0 || finder.sort === "snow";
+  // All candidates only for the snow filter; the snow sort takes the first 300 by ascent (as in 0.7), else the shown ones.
+  const snowRows = finder.snowMin > 0 ? rows : finder.sort === "snow" ? rows.slice(0, 300) : rows.slice(0, finder.shown);
   put(sum, `${rows.length} passende Routen, lade Neuschnee …`);
-  await fetchRouteSnow((needAll ? rows : rows.slice(0, finder.shown)).map(x => x.f), date);
+  await fetchRouteSnow(snowRows.map(x => x.f), date);
   if (token !== finderToken) return;
   const snowOf = x => routeSnow.get(`${date}|${x.f.properties.osm}`);
-  if (finder.snowMin > 0) for (let i = rows.length - 1; i >= 0; i--) { const s = snowOf(rows[i]); if (!s || s.past + s.today < finder.snowMin) { rows.splice(i, 1); counts.filtered++; } }
+  // A route whose snow could not be loaded is not counted as "does not match", it is reported on its own.
+  if (finder.snowMin > 0) for (let i = rows.length - 1; i >= 0; i--) {
+    const s = snowOf(rows[i]);
+    if (!s) { rows.splice(i, 1); counts.noSnow = (counts.noSnow || 0) + 1; }
+    else if (s.past + s.today < finder.snowMin) { rows.splice(i, 1); counts.filtered++; }
+  }
   const rank = { go: 0, warn: 1, none: 2 };
   rows.sort((a, b) => {
     if (finder.sort === "name") return routeTitle(a.f.properties).localeCompare(routeTitle(b.f.properties), "de");
@@ -2761,6 +2771,7 @@ async function renderFinder() {
   if (counts.l3) out.push(`${counts.l3} in Stufe-3-Gebieten ausgeblendet`);
   if (counts.hits) out.push(`${counts.hits} führen durch Gefahrenstellen laut Bericht`);
   if (counts.filtered) out.push(`${counts.filtered} passen nicht zu den Filtern`);
+  if (counts.noSnow) out.push(`${counts.noSnow} ohne Neuschneewert (Wetterdienst nicht erreichbar), deshalb ausgeblendet`);
   put(sum, out.join(" · ") + ".", finder.raw && haveBulletins === false ? el("div", { class: "note warn", text: "Ohne Lagebericht, keine Bewertung. Das sind keine Vorschläge." }) : null);
   put(list, rows.slice(0, finder.shown).map(x => routeCard(x, snowOf(x))),
     rows.length > finder.shown ? el("button", { class: "btn ghost", type: "button", onclick: () => { finder.shown += 20; renderFinder(); }, text: `Weitere ${Math.min(20, rows.length - finder.shown)} zeigen` }) : null);
@@ -2855,6 +2866,11 @@ function initFinder() {
   $("#f-reset").addEventListener("click", () => { Object.assign(finder, { ...FINDER_DEFAULTS, area: finder.area }); finderApply(); });
   $("#finder").addEventListener("submit", e => e.preventDefault());
   finderSync();
+  // A saved distance filter or sort needs the position again after a reload; without it both are switched off.
+  if (finder.distMax > 0 || finder.sort === "dist") needPosition().then(pos => {
+    if (!pos) { finder.distMax = 0; if (finder.sort === "dist") finder.sort = "snow"; saveFinder(); finderSync(); }
+    renderFinder();
+  });
 }
 const avLink = p => `https://www.alpenvereinaktiv.com/de/suche/?q=${encodeURIComponent(`${p.peak || p.name || p["piste:name"] || ""} Skitour`.trim())}`;
 function showFinderFor(areaKey) {
