@@ -3023,6 +3023,31 @@ function goPage(name) {
   if (name === "lage" && lageMap.map) requestAnimationFrame(() => lageMap.map.resize());
   if (name === "wetter" && wxDirty) renderWeather();
 }
+// Horizontal swipe changes the page. Not on maps (they pan), in form fields or horizontally scrolling strips, or while
+// a sheet is open; on the tab bar it always works, which is the way to swipe away from the map page.
+function swipeBlocked(target) {
+  if (target.closest("nav.tabbar")) return false;
+  if (!$("#sheet").hidden || $("#peek") && !$("#peek").hidden) return true;
+  if (target.closest(".maplibregl-map, #page-karte, input, select, textarea, [contenteditable]")) return true;
+  for (let n = target; n && n !== document.body; n = n.parentElement) {
+    const ox = getComputedStyle(n).overflowX;
+    if ((ox === "auto" || ox === "scroll") && n.scrollWidth > n.clientWidth) return true;
+  }
+  return false;
+}
+function initSwipe() {
+  let start = null;
+  document.addEventListener("touchstart", e => {
+    start = e.touches.length === 1 && !swipeBlocked(e.target) ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
+  }, { passive: true });
+  document.addEventListener("touchend", e => {
+    if (!start || !e.changedTouches.length) return;
+    const t = e.changedTouches[0], next = swipePage(Object.keys(PAGES), currentPage, t.clientX - start.x, t.clientY - start.y);
+    start = null;
+    if (next) goPage(next);
+  }, { passive: true });
+  document.addEventListener("touchcancel", () => { start = null; }, { passive: true });
+}
 function setTourView(v) {
   tourView = v;
   for (const k of ["sugg", "mine", "detail"]) $("#view-" + k).hidden = k !== v;
@@ -3286,6 +3311,7 @@ $("#t-gpx").addEventListener("change", async e => {
   } catch (err) { info.textContent = "Die Datei konnte nicht gelesen werden."; }
 });
 document.querySelectorAll("nav.tabbar button").forEach(b => b.addEventListener("click", () => { closeSheet(); goPage(b.dataset.page); }));
+initSwipe();
 $("#tv-sugg").addEventListener("click", () => setTourView("sugg"));
 $("#tv-mine").addEventListener("click", () => setTourView("mine"));
 $("#detail-back").addEventListener("click", () => setTourView("mine"));
