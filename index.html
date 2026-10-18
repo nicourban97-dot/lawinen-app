@@ -657,7 +657,8 @@ const AREAS = [
   { key: "suedtirol", name: "Südtirol", prefix: ["IT-32-BZ-"], points: [P("Sulden", 46.52, 10.59, 2300), P("Gröden", 46.57, 11.72, 2200), P("Ahrntal", 46.98, 11.95, 2200)] },
   { key: "trentino", name: "Trentino", prefix: ["IT-32-TN-"], points: [P("Madonna di Campiglio", 46.23, 10.83, 2000), P("Fassatal", 46.43, 11.77, 2100)] },
   { key: "schweiz", name: "Schweiz", prefix: ["CH-"], points: [P("Davos", 46.80, 9.84, 2200), P("Engelberg", 46.82, 8.41, 2000), P("Andermatt", 46.63, 8.59, 2200), P("Zermatt", 46.02, 7.75, 2600)] },
-  { key: "frankreich", name: "Frankreich", prefix: ["FR-"], points: [P("Chamonix", 45.92, 6.87, 2200), P("Val d'Isère", 45.45, 6.98, 2300), P("La Grave", 45.05, 6.31, 2200)] },
+  // Météo-France also rates Corsica and the Pyrenees (FR-40 and up); the Alps are the massifs FR-01 to FR-23.
+  { key: "frankreich", name: "Frankreich", prefix: ["FR-0", "FR-1", "FR-20", "FR-21", "FR-22", "FR-23"], points: [P("Chamonix", 45.92, 6.87, 2200), P("Val d'Isère", 45.45, 6.98, 2300), P("La Grave", 45.05, 6.31, 2200)] },
   { key: "piemont", name: "Piemont", prefix: ["IT-21-"], points: [P("Alagna", 45.85, 7.94, 2200)] },
   { key: "aosta", name: "Aostatal", prefix: ["IT-23-"], points: [P("Courmayeur", 45.80, 6.97, 2100), P("Cervinia", 45.93, 7.63, 2400)] },
   { key: "lombardei", name: "Lombardei", prefix: ["IT-25-"], points: [P("Livigno", 46.54, 10.14, 2300), P("Bormio", 46.47, 10.37, 2200)] },
@@ -908,7 +909,7 @@ function evaluateTour(t) {
   if (!r) return { status: "none", level: null, notes: ["Für dieses Gebiet liegt kein Lagebericht vor."] };
   const level = maxLevel(r.bulletin), notes = [];
   if (r.stale) notes.push(`Lagebericht vom ${fmtDate(r.file)}, noch kein neuerer veröffentlicht.`);
-  if (level >= 4) return { status: "stop", level, notes: [`Stufe ${level} (${LEVEL_NAME[level]}) in ${r.name}: keine Tourenvorschläge in diesem Gebiet.`, ...notes] };
+  if (level >= 4) return { status: "stop", level, notes: [`Stufe ${level} (${LEVEL_NAME[level]}) in ${regionLabel(t.region)}: keine Tourenvorschläge in diesem Gebiet.`, ...notes] };
   const hits = problemHits(t, r.bulletin);
   if (level === 3) {
     if (!t.aspects.length) notes.push("Expositionen der Tour sind nicht eingetragen. Gefahrenstellen laut Bericht selbst prüfen.");
@@ -1123,7 +1124,7 @@ function bulletinDetail(regionId) {
     textBlock(t.highlights), textBlock(t.comment)));
   return el("div", { class: "bulletin" },
     el("div", { class: "meta" },
-      el("b", { text: `${r.name} (${regionId})` }),
+      el("b", { text: `${regionLabel(regionId)} (${regionId})` }),
       b.publicationTime ? el("span", { text: `Veröffentlicht ${fmtTime(b.publicationTime)}` }) : null,
       b.validTime?.endTime ? el("span", { text: `gültig bis ${fmtTime(b.validTime.endTime)}` }) : null,
       b.unscheduled ? el("span", { class: "badge warn", text: "Aktualisierte Fassung" }) : null,
@@ -1183,7 +1184,7 @@ function tourBadge(ev) {
     : ev.status === "go" ? el("span", { class: "badge", text: "Lage prüfen" })
     : el("span", { class: "badge", text: "Kein Bericht" });
 }
-const regionName = id => (state.regions.get(id) || {}).name || STATIC_REGION_NAMES[id] || id;
+const regionName = id => regionLabel(id);
 // The track's result once it has been computed (tour detail or map), otherwise the rough estimate.
 function tourRiskNow(t) {
   const key = tourKey(t);
@@ -2058,7 +2059,8 @@ function routePanel() {
       el("a", { class: "btn ghost", href: `https://www.openstreetmap.org/${p.osm}`, target: "_blank", rel: "noopener", text: "In OpenStreetMap" })));
 }
 
-const regionLabel = id => (state.regions.get(id) || {}).name || mapState.names[id] || STATIC_REGION_NAMES[id] || id;
+// One place for a region's name: some services publish regions without one (all of France in the EAWS mirror).
+function regionLabel(id) { return (state.regions.get(id) || {}).name || mapState.names[id] || STATIC_REGION_NAMES[id] || id; }
 
 function loadRegionShapes() {
   if (mapState.shapes) return Promise.resolve(mapState.shapes);
@@ -2925,12 +2927,12 @@ function openRegionSheet(id) {
 function openAreaSheet(key) {
   const a = AREAS.find(x => x.key === key), s = areaSummary(a);
   if (s.items.length <= 1) { openRegionSheet(s.items.length ? s.items[0].id : ""); return; }
-  const sorted = [...s.items].sort((x, y) => y.level - x.level || x.name.localeCompare(y.name, "de"));
+  const sorted = [...s.items].sort((x, y) => y.level - x.level || regionLabel(x.id).localeCompare(regionLabel(y.id), "de"));
   const holder = el("div");
   const show = id => { put(holder, regionContent(id)); if (lageMap.ready) lageMap.map.setFilter("sel", ["==", ["get", "id"], id]); };
   openSheet(`Lagebericht ${a.name}`, el("div", { style: "display:grid;gap:14px" },
     el("label", { class: "region-pick" }, "Teilgebiet",
-      el("select", { onchange: e => show(e.target.value) }, sorted.map(i => el("option", { value: i.id, text: `${i.name}, Stufe ${i.level}` })))),
+      el("select", { onchange: e => show(e.target.value) }, sorted.map(i => el("option", { value: i.id, text: `${regionLabel(i.id)}, Stufe ${i.level}` })))),
     holder));
   show(sorted[0].id);
 }
