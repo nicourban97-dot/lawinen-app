@@ -248,6 +248,41 @@ details > summary { cursor: pointer; color: var(--accent); font-weight: 700; }
 .wxday .tt b { font-size: 17px; }
 .wxday .sn { color: var(--snow); font-weight: 700; }
 .wxhints { display: grid; gap: 8px; }
+.wxview { display: grid; gap: 14px; min-width: 0; }
+.wxhero { border-radius: 18px; padding: 16px 18px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.25); display: grid; gap: 2px; border: var(--edge); box-shadow: var(--shadow); }
+.wxhero.mood-clear { background: linear-gradient(160deg, #3f7fc4, #8fc1ec); }
+.wxhero.mood-cloud { background: linear-gradient(160deg, #6f7e8c, #aeb9c3); }
+.wxhero.mood-snow { background: linear-gradient(160deg, #5d7891, #a9bccd); }
+.wxhero.mood-rain { background: linear-gradient(160deg, #4f5f70, #8e9dab); }
+.wxhero.mood-night { background: linear-gradient(160deg, #1b2740, #3e5070); }
+.wxplace { font: 700 17px/1.2 var(--font-head); }
+.wxnow { display: flex; align-items: center; gap: 10px; }
+.wxbig { font: 300 64px/1 var(--font-body); letter-spacing: -2px; }
+.wxic { font-size: 46px; line-height: 1; }
+.wxtext, .wxhl { font-size: 15px; font-weight: 700; }
+.wxhours { display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; scroll-snap-type: x proximity; }
+.wxh { flex: none; width: 58px; display: grid; justify-items: center; gap: 2px; padding: 8px 2px; border-radius: 12px; background: var(--surface); border: var(--edge); scroll-snap-align: start; font-variant-numeric: tabular-nums; }
+.wxh .t { font-size: 13px; color: var(--muted); font-weight: 700; }
+.wxh .i { font-size: 22px; line-height: 1.1; }
+.wxh b { font-size: 16px; }
+.wxh .p { font-size: 11px; min-height: 14px; color: var(--muted); }
+.wxh .p.sn { color: var(--snow); font-weight: 700; }
+.wxweek { display: grid; border: var(--edge); border-radius: 14px; overflow: hidden; background: var(--surface); }
+.wxrow { display: grid; grid-template-columns: 52px 30px 46px 34px minmax(40px, 1fr) 34px; gap: 6px; align-items: center; padding: 9px 12px; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--fg); text-align: left; cursor: pointer; font-size: 15px; font-variant-numeric: tabular-nums; }
+.wxrow:last-child { border-bottom: 0; }
+.wxrow[aria-pressed="true"] { background: var(--surface-2); }
+.wxrow .dn { font: 700 16px var(--font-head); }
+.wxrow .ic { font-size: 22px; text-align: center; }
+.wxrow .sn { color: var(--snow); font-weight: 700; font-size: 13px; }
+.wxrow .lo { color: var(--muted); text-align: right; }
+.wxrow .hi { font-weight: 700; }
+.wxrow .bar { position: relative; height: 6px; border-radius: 3px; background: var(--surface-2); }
+.wxrow .bar i { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: linear-gradient(90deg, #5aa2dc, #f0a04b); }
+.wxtiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+.wxtile { background: var(--surface); border: var(--edge); border-radius: 14px; padding: 10px 12px; display: grid; gap: 2px; }
+.wxtile .k { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.wxtile .v { font: 700 22px/1.2 var(--font-body); font-variant-numeric: tabular-nums; }
+.wxtile .s { font-size: 13px; color: var(--muted); }
 .fgrid { display: grid; gap: 14px; margin-top: 12px; }
 .fgrid .flabel { margin-bottom: 6px; }
 #f-chips:empty { display: none; }
@@ -1333,7 +1368,7 @@ async function renderTourDetail() {
   renderTourRisk(t, riskBox, token0);
   if (t.lat != null) forecastFor({ lat: t.lat, lon: t.lon, elev: t.top }, date).then(w => {
     if (renderTourDetail.riskToken !== token0) return;
-    put(fcBox, el("h3", { text: `Vorhersage für den Gipfel, ${t.top} m` }), forecastView(w, date, { compact: true }));
+    put(fcBox, el("h3", { text: "Vorhersage für den Gipfel" }), forecastView(w, date, { label: `${t.name}, ${t.top} m` }));
   }).catch(() => { if (renderTourDetail.riskToken === token0) put(fcBox, el("h3", { text: "Vorhersage für den Gipfel" }), el("p", { class: "status", text: "Die Vorhersage konnte nicht geladen werden." })); });
   else fcBox.remove();
   if (t.lat == null) {
@@ -1392,7 +1427,7 @@ function showTour(id) {
 }
 // ---------- weather forecast ----------
 // Seven days from the chosen day, model data from Open-Meteo for the point and its elevation.
-const DAILY_FC = "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,rain_sum,snowfall_sum,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant";
+const DAILY_FC = "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,rain_sum,snowfall_sum,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,sunshine_duration";
 const WX_ICON = c => c == null ? "" : c === 0 ? "☀️" : c <= 2 ? "🌤️" : c === 3 ? "☁️" : c <= 48 ? "🌫️" : c <= 57 ? "🌦️" : c <= 67 ? "🌧️" : c <= 77 ? "🌨️" : c <= 82 ? "🌦️" : c <= 86 ? "🌨️" : "⛈️";
 const fcCache = new Map();
 function forecastFor(p, date) {
@@ -1401,7 +1436,8 @@ function forecastFor(p, date) {
   let end = addDays(date, 6); if (dayDiff(end, today) > 15) end = addDays(today, 15);
   const key = `${p.lat}|${p.lon}|${p.elev}|${date}|${end}`;
   if (!fcCache.has(key)) {
-    const q = `latitude=${p.lat}&longitude=${p.lon}&elevation=${Math.round(p.elev)}&timezone=Europe%2FBerlin&start_date=${date}&end_date=${end}&daily=${DAILY_FC}`;
+    // Without a known elevation (own position) Open-Meteo takes the terrain model's height.
+    const q = `latitude=${p.lat}&longitude=${p.lon}${p.elev ? `&elevation=${Math.round(p.elev)}` : ""}&timezone=Europe%2FBerlin&start_date=${date}&end_date=${end}&daily=${DAILY_FC}`;
     const base = weatherBase(date);
     const pr = getJSON(`${base}?${q}&hourly=${HOURLY}`).catch(() => getJSON(`${base}?${q}&hourly=${HOURLY.replace(",freezing_level_height", "")}`));
     pr.catch(() => fcCache.delete(key));
@@ -1447,37 +1483,96 @@ function wxHints(w) {
   }
   return out;
 }
+// Like a weather app: a large card for now, the avalanche-relevant notes, an hourly strip, seven days with
+// temperature bars over the week's range, and tiles for the chosen day.
+const isNightHour = h => h < 7 || h >= 19;
+const wxIconAt = (code, hour) => code != null && code <= 2 && isNightHour(hour) ? "🌙" : WX_ICON(code);
+function wxMood(code, hour) {
+  if (isNightHour(hour)) return "night";
+  if (code == null || code <= 1) return "clear";
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return "snow";
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95) return "rain";
+  return "cloud";
+}
+// Index of "now": the running hour for today, 12 o'clock for any other day.
+function wxNowIndex(w, day) {
+  const h = w.hourly, today = ymd(new Date());
+  const target = day === today ? `${day}T${String(new Date().getHours()).padStart(2, "0")}:00` : `${day}T12:00`;
+  const i = h.time.indexOf(target);
+  return i >= 0 ? i : Math.max(0, h.time.findIndex(t => t.startsWith(day)));
+}
+function wxHero(w, day, placeLabel) {
+  const h = w.hourly, D = w.daily, i = wxNowIndex(w, day), di = Math.max(0, D.time.indexOf(day)), hour = Number(h.time[i].slice(11, 13));
+  const code = h.weather_code ? h.weather_code[i] : D.weather_code[di];
+  return el("div", { class: `wxhero mood-${wxMood(code, hour)}` },
+    el("div", { class: "wxplace", text: placeLabel }),
+    el("div", { class: "wxnow" }, el("span", { class: "wxbig", text: `${num(h.temperature_2m[i])}°` }), el("span", { class: "wxic", text: wxIconAt(code, hour), "aria-hidden": "true" })),
+    el("div", { class: "wxtext", text: `${WMO(code) || ""} · ${day === ymd(new Date()) ? "jetzt" : `${fmtDay(day).replace(".,", "")}, 12 Uhr`}` }),
+    el("div", { class: "wxhl", text: `H ${num(D.temperature_2m_max[di])}°  T ${num(D.temperature_2m_min[di])}°${(D.snowfall_sum[di] || 0) >= 0.5 ? ` · ${num(D.snowfall_sum[di])} cm Neuschnee` : ""}` }));
+}
+function wxHours(w, day) {
+  const h = w.hourly, today = ymd(new Date());
+  let start = day === today ? wxNowIndex(w, day) : h.time.indexOf(`${day}T06:00`);
+  if (start < 0) start = Math.max(0, h.time.findIndex(t => t.startsWith(day)));
+  const cells = [];
+  for (let i = start; i < Math.min(h.time.length, start + 24); i++) {
+    const hour = Number(h.time[i].slice(11, 13)), s = h.snowfall ? h.snowfall[i] || 0 : 0, p = h.precipitation ? h.precipitation[i] || 0 : 0;
+    cells.push(el("div", { class: "wxh" },
+      el("span", { class: "t", text: i === start && day === today ? "Jetzt" : `${String(hour).padStart(2, "0")}` }),
+      el("span", { class: "i", text: wxIconAt(h.weather_code && h.weather_code[i], hour), "aria-hidden": "true" }),
+      el("b", { text: `${num(h.temperature_2m[i])}°` }),
+      el("span", { class: s >= 0.1 ? "p sn" : "p", text: s >= 0.1 ? `${num(s, 1)} cm` : p >= 0.1 ? `${num(p, 1)} mm` : "" })));
+  }
+  return el("div", { class: "wxhours", role: "list", "aria-label": "Stundenvorhersage" }, cells);
+}
+function wxWeek(w, sel, onPick) {
+  const D = w.daily, lo = Math.min(...D.temperature_2m_min), hi = Math.max(...D.temperature_2m_max), span = Math.max(1, hi - lo);
+  return el("div", { class: "wxweek" }, D.time.map((d, i) => {
+    const a = (D.temperature_2m_min[i] - lo) / span * 100, b = (D.temperature_2m_max[i] - lo) / span * 100, s = D.snowfall_sum[i] || 0;
+    return el("button", { type: "button", class: "wxrow", "aria-pressed": String(d === sel), onclick: () => onPick(d) },
+      el("span", { class: "dn", text: d === ymd(new Date()) ? "Heute" : fmtDay(d).slice(0, 3).replace(".", "") }),
+      el("span", { class: "ic", text: WX_ICON(D.weather_code && D.weather_code[i]), "aria-label": WMO(D.weather_code && D.weather_code[i]) }),
+      el("span", { class: "sn", text: s >= 0.5 ? `${num(s)} cm` : "" }),
+      el("span", { class: "lo", text: `${num(D.temperature_2m_min[i])}°` }),
+      el("span", { class: "bar" }, el("i", { style: `left:${a.toFixed(1)}%;width:${Math.max(4, b - a).toFixed(1)}%` })),
+      el("span", { class: "hi", text: `${num(D.temperature_2m_max[i])}°` }));
+  }));
+}
+function wxTiles(w, day) {
+  const D = w.daily, h = w.hourly, di = Math.max(0, D.time.indexOf(day));
+  const snow3 = [0, 1, 2].reduce((s, k) => s + (D.snowfall_sum[di + k] || 0), 0), fl = dayFreezing(w, day);
+  const clouds = h.cloud_cover ? h.time.map((t, i) => [t, h.cloud_cover[i]]).filter(([t, v]) => t.startsWith(day) && +t.slice(11, 13) >= 8 && +t.slice(11, 13) <= 16 && v != null).map(x => x[1]) : [];
+  const tile = (k, v, s) => el("div", { class: "wxtile" }, el("div", { class: "k", text: k }), el("div", { class: "v" }, v), s ? el("div", { class: "s", text: s }) : null);
+  return el("div", { class: "wxtiles" },
+    tile("Neuschnee", `${num(D.snowfall_sum[di] || 0)} cm`, `${num(snow3)} cm in 3 Tagen ab diesem Tag`),
+    tile("Wind", wind(D.wind_speed_10m_max[di], D.wind_direction_10m_dominant[di]), `Böen bis ${num(D.wind_gusts_10m_max[di])} km/h`),
+    tile("Nullgradgrenze", fl != null ? `${Math.round(fl / 100) * 100} m` : "–", "höchster Wert am Tag"),
+    D.sunshine_duration ? tile("Sonne", `${num((D.sunshine_duration[di] || 0) / 3600, 1)} h`, "Sonnenscheindauer") : null,
+    clouds.length ? tile("Bewölkung", `${Math.round(clouds.reduce((a, b) => a + b, 0) / clouds.length)} %`, "8 bis 16 Uhr") : null,
+    tile("Niederschlag", `${num(D.precipitation_sum[di] || 0, 1)} mm`, (D.rain_sum && (D.rain_sum[di] || 0) >= 0.5) ? `davon ${num(D.rain_sum[di], 1)} mm Regen` : "als Schnee oder trocken"));
+}
 function forecastView(w, date, opts = {}) {
-  const D = w.daily, box = el("div", { style: "display:grid;gap:12px" });
+  const D = w.daily, box = el("div", { class: "wxview" });
   let sel = opts.day && D.time.includes(opts.day) ? opts.day : D.time[0];
-  const hours = el("div", { style: "display:grid;gap:8px" });
-  const days = el("div", { class: "wxdays" });
-  const draw = () => {
-    put(days, D.time.map((d, i) => {
-      const fl = dayFreezing(w, d), s = D.snowfall_sum[i] || 0, p = D.precipitation_sum[i] || 0;
-      return el("button", { type: "button", class: "wxday", "aria-pressed": String(d === sel), onclick: () => { sel = d; if (opts.onDay) opts.onDay(d); draw(); } },
-        el("span", { class: "dn", text: d === ymd(new Date()) ? "Heute" : fmtDay(d).replace(".,", "") }),
-        el("span", { class: "ic", text: WX_ICON(D.weather_code && D.weather_code[i]), "aria-label": WMO(D.weather_code && D.weather_code[i]) }),
-        el("span", { class: "mid" },
-          s >= 0.5 ? el("span", { class: "sn", text: `${num(s)} cm Schnee` }) : p >= 0.2 ? `${num(p, 1)} mm` : "trocken",
-          " · Wind ", el("b", {}, wind(D.wind_speed_10m_max[i], D.wind_direction_10m_dominant[i])),
-          fl != null ? ` · 0° ${Math.round(fl / 100) * 100} m` : ""),
-        el("span", { class: "tt" }, el("b", { text: `${num(D.temperature_2m_max[i])}°` }), el("br"), el("span", { class: "status", text: `${num(D.temperature_2m_min[i])}°` })));
-    }));
-    put(hours, el("h3", { text: `Tagesverlauf ${fmtDate(sel)}` }), ...dayForecast(w, sel));
-  };
   const hints = wxHints(w);
-  draw();
-  put(box,
+  const draw = () => put(box,
+    wxHero(w, sel, opts.label || ""),
     hints.length ? el("div", { class: "wxhints" }, el("h3", { text: "Wichtig für die Lawinenlage" }), hints.slice(0, 5).map(([k, t]) => el("div", { class: "note " + k, text: t })),
-      el("p", { class: "status", text: "Hinweise aus der Wettervorhersage, ersetzen nicht den Lagebericht." })) : el("p", { class: "status", text: "Keine auffälligen Werte für die Lawinenlage in den nächsten Tagen (viel Neuschnee, Wind, Regen, starke Erwärmung)." }),
-    days, opts.compact ? el("details", {}, el("summary", { text: "Stundenwerte des gewählten Tages" }), hours) : hours);
+      el("p", { class: "status", text: "Aus der Wettervorhersage, ersetzt nicht den Lagebericht." })) : el("p", { class: "status", text: "Keine auffälligen Werte für die Lawinenlage in den nächsten Tagen (viel Neuschnee, Wind, Regen, starke Erwärmung)." }),
+    wxHours(w, sel),
+    el("h3", { text: "7 Tage" }),
+    wxWeek(w, sel, d => { sel = d; if (opts.onDay) opts.onDay(d); draw(); }),
+    el("h3", { text: `${sel === ymd(new Date()) ? "Heute" : fmtDate(sel)} im Detail` }),
+    wxTiles(w, sel),
+    el("details", {}, el("summary", { text: "Stundenwerte als Tabelle" }), el("div", { style: "display:grid;gap:8px;margin-top:8px" }, ...dayForecast(w, sel))));
+  draw();
   return box;
 }
 function wxPlaces() {
   const out = [];
   for (const a of AREAS) a.points.forEach((p, i) => out.push({ key: `a:${a.key}:${i}`, label: `${a.name}: ${p.label}, ${p.elev} m`, lat: p.lat, lon: p.lon, elev: p.elev, group: "Gebiete" }));
   for (const t of state.tours) if (t.lat != null) out.push({ key: `t:${t.id}`, label: `${t.name}, Gipfel ${t.top} m`, lat: t.lat, lon: t.lon, elev: t.top, group: "Meine Touren" });
+  out.push({ key: "pos", label: "Mein Standort", lat: state.pos ? state.pos.lat : null, lon: state.pos ? state.pos.lon : null, elev: null, group: "Standort" });
   return out;
 }
 let wxDirty = true;
@@ -1485,22 +1580,28 @@ async function renderWeather() {
   if (currentPage !== "wetter") { wxDirty = true; return; }
   wxDirty = false;
   const places = wxPlaces(), sel = $("#wx-place");
-  put(sel, ["Gebiete", "Meine Touren"].map(g => {
+  put(sel, ["Standort", "Meine Touren", "Gebiete"].map(g => {
     const items = places.filter(p => p.group === g);
     return items.length ? el("optgroup", { label: g }, items.map(p => el("option", { value: p.key, text: p.label }))) : null;
   }));
-  const p = places.find(x => x.key === state.wxPlace) || places[0];
+  let p = places.find(x => x.key === state.wxPlace) || places[0];
   sel.value = p.key;
   const body = $("#wx-body"), date = state.date, token = `${p.key}|${date}`;
   renderWeather.token = token;
+  if (p.key === "pos" && p.lat == null) {
+    put(body, el("p", { class: "status", text: "Frage den Standort ab …" }));
+    const pos = await needPosition();
+    if (renderWeather.token !== token) return;
+    if (!pos) { put(body, el("p", { class: "note", text: "Der Standort ist nicht freigegeben. Wähle oben einen Ort oder erlaube den Standort in den Einstellungen des iPhones." })); return; }
+    p = { ...p, lat: pos.lat, lon: pos.lon };
+  }
   put(body, el("p", { class: "status", text: "Lade Vorhersage …" }));
   try {
     const w = await forecastFor(p, date);
     if (renderWeather.token !== token) return;
-    put(body, el("div", { class: "panel" },
-      el("h2", { text: p.label }),
-      el("p", { class: "status", text: `Vorhersage ab ${fmtDate(date)}, Modelldaten von Open-Meteo für ${p.elev} m, keine Messwerte. Wind in km/h, die Buchstaben nennen, woher er kommt. Tippe auf einen Tag für den Verlauf.` }),
-      forecastView(w, date, { day: state.wxDay, onDay: d => { state.wxDay = d; } })));
+    put(body,
+      forecastView(w, date, { label: p.key === "pos" ? `Mein Standort, ${Math.round(w.elevation || 0)} m` : p.label, day: state.wxDay, onDay: d => { state.wxDay = d; } }),
+      el("p", { class: "status", text: `Vorhersage ab ${fmtDate(date)}: Modelldaten von Open-Meteo für ${p.elev || Math.round(w.elevation || 0)} m, keine Messwerte. Wind in km/h, die Buchstaben nennen, woher er kommt.` }));
   } catch (e) {
     if (renderWeather.token !== token) return;
     put(body, el("p", { class: "note", text: dayDiff(date, ymd(new Date())) > 14 ? "Für dieses Datum gibt es noch keine Vorhersage." : "Die Vorhersage konnte nicht geladen werden. Bitte die Internetverbindung prüfen." }));
