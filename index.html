@@ -204,8 +204,11 @@ details > summary { cursor: pointer; color: var(--accent); font-weight: 700; }
 .maplibregl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color: var(--surface); }
 .maplibregl-popup-close-button { color: var(--fg); font-size: 20px; padding: 0 6px; }
 .maplibregl-ctrl-bottom-right { margin-bottom: 6px; }
-.qbar { flex: 1 0 100%; display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; pointer-events: auto; padding: 2px 1px 4px; margin: 0 -1px; }
-.qbar::-webkit-scrollbar { display: none; }
+.qpanel { flex: 1 0 100%; pointer-events: auto; background: var(--surface); border-radius: 14px; padding: 12px; box-shadow: var(--shadow); display: grid; gap: 10px;
+  max-height: min(62vh, 520px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.qchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.qpanel details > summary { font-size: 15px; }
+.qpanel .mpanel { margin-top: 10px; }
 .qchip { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; padding: 7px 12px; border-radius: 99px; border: 0; background: var(--surface); color: var(--fg); box-shadow: var(--shadow); cursor: pointer; }
 .qchip[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
 .qchip .sw { margin: 0; }
@@ -344,8 +347,11 @@ img.chart { width: 100%; height: auto; display: block; border-radius: 8px; backg
           <div class="mseg" role="group" aria-label="Darstellung">
             <button type="button" id="m-2d" aria-pressed="true">2D</button><button type="button" id="m-3d" aria-pressed="false">3D</button>
           </div>
-          <button type="button" class="mbtn" id="m-layers">Mehr</button>
-          <div class="qbar" id="m-quick" role="group" aria-label="Ebenen ein- und ausschalten"></div>
+          <button type="button" class="mbtn" id="m-layers" aria-expanded="false" aria-controls="m-quick">Ebenen</button>
+          <div class="qpanel" id="m-quick" role="group" aria-label="Ebenen ein- und ausschalten" hidden>
+            <div class="qchips" id="m-chips"></div>
+            <details id="m-more"><summary>Weitere Einstellungen</summary></details>
+          </div>
           <div class="mrow">
             <button type="button" class="mchip" id="m-title" hidden></button>
             <div class="mmsg" id="m-msg" role="status" hidden></div>
@@ -2100,6 +2106,7 @@ function initMap() {
   map.once("style.load", onReady); map.once("load", onReady);
   const shown = ids => ids.filter(id => map.getLayer(id) && map.getLayoutProperty(id, "visibility") !== "none");
   map.on("click", e => {
+    if (mapState.panelOpen) { toggleLayersPanel(false); return; }
     const box = [[e.point.x - 7, e.point.y - 7], [e.point.x + 7, e.point.y + 7]];
     const hit = (ids, at = box) => { const l = shown(ids); return l.length ? map.queryRenderedFeatures(at, { layers: l })[0] : null; };
     const t = hit(["tours"]);
@@ -2194,9 +2201,18 @@ function toggleLayer(key) {
   if (key === "slope" && f.slope) refreshSlope(); else applyMode();
   ensureLayerData();
 }
+const activeLayerCount = () => QUICK.filter(([k]) => mapState.filter[k]).length;
 function renderQuick() {
   const f = mapState.filter;
-  put($("#m-quick"), QUICK.map(([k, label]) => el("button", { type: "button", class: "qchip", "aria-pressed": String(!!f[k]), onclick: () => toggleLayer(k) }, label)));
+  put($("#m-chips"), QUICK.map(([k, label]) => el("button", { type: "button", class: "qchip", "aria-pressed": String(!!f[k]), onclick: () => toggleLayer(k) }, label)));
+  $("#m-layers").textContent = `Ebenen · ${activeLayerCount()}`;
+}
+// The layer switches stay folded away so the map is free; the button opens them, a tap on the map closes them.
+function toggleLayersPanel(open) {
+  mapState.panelOpen = open == null ? !mapState.panelOpen : open;
+  $("#m-quick").hidden = !mapState.panelOpen;
+  $("#m-layers").setAttribute("aria-expanded", String(mapState.panelOpen));
+  if (mapState.panelOpen) renderMapPanel();
 }
 function refreshSlope() {
   const m = mapState.map; if (!m || !mapState.ready) return;
@@ -2375,8 +2391,6 @@ function renderMapPanel() {
       el("span", { class: "status", text: "In 3D wechselt die Karte von Topo auf Gelände, ohne Höhenlinien." })),
     ![...state.regions.keys()].length ? el("p", { class: "status", text: "Für dieses Datum gibt es keine Lageberichte, deshalb sind alle Gebiete grau." }) : null,
     el("div", { class: "filters" },
-      el("div", { class: "frow" }, el("span", { class: "flabel", text: "Ebenen" }),
-        QUICK.map(([k, label]) => chip(!!f[k], label, () => { toggleLayer(k); renderMapPanel(); }))),
       f.hazard ? el("p", { class: "status", text: `Gefahrenzonen: Hänge ab 30°, eingefärbt nach der Auslösewahrscheinlichkeit, berechnet aus dem Lagebericht des jeweiligen Teilgebiets (Stufe je Höhe, Expositionen und Höhen der Lawinenprobleme), der Steilheit und der Gruppe aus den Einstellungen. Ab Zoomstufe ${HAZARD_MINZOOM}, am genauesten ab 13. Gering wird nicht eingefärbt.` }) : null,
       f.acc ? el("div", { class: "frow" }, el("span", { class: "flabel", text: "Lawinenereignisse" }),
         ACC_PERIODS.map(([k, label]) => chip((f.accPeriod || "5") === k, label, () => { f.accPeriod = k; store.set("lawinenapp.mapfilter.v1", f); updateAcc(); renderMapPanel(); })),
@@ -2859,7 +2873,8 @@ $("#detail-back").addEventListener("click", () => setTourView("mine"));
 $("#sheet-close").addEventListener("click", () => closeSheet());
 $("#sheet-bg").addEventListener("click", () => closeSheet());
 $("#btn-settings").addEventListener("click", () => openSheet("Einstellungen", $("#settings-src"), document.body));
-$("#m-layers").addEventListener("click", () => { renderMapPanel(); openSheet("Ebenen und Filter", $("#m-panel"), $("#page-karte")); });
+$("#m-layers").addEventListener("click", () => toggleLayersPanel());
+$("#m-more").append($("#m-panel")); $("#m-panel").hidden = false;
 $("#m-title").addEventListener("click", () => mapState.region && openRegionSheet(mapState.region));
 
 $("#m-region").addEventListener("change", e => selectArea(e.target.value));
