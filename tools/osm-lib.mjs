@@ -58,12 +58,26 @@ export function inShape(lon, lat, geom) {
 export const bandOf = lon => Math.floor((lon - 5) / 2);
 
 // OSM often splits one tour into several ways. Pieces are joined where exactly two ends meet (within tolM metres)
-// and their names agree (or only one has a name). At a junction of three or more ends nothing is joined.
-export function joinWays(ways, tolM = 25) {
+// and their names agree (or only one has a name). At a junction of three or more ends nothing is joined, nor where
+// another way passes through the point (an inner node of a loose way, or any node of `others`, e.g. route relations).
+export function joinWays(ways, tolM = 25, others = []) {
   let items = ways.map(w => ({ ids: [w.id], tags: { ...w.tags }, coords: w.coords.map(c => [c[0], c[1]]) }));
   const cell = 0.001, tolKm = tolM / 1000;
   const keyOf = (x, y) => `${Math.floor(x / cell)}|${Math.floor(y / cell)}`;
-  const namesOk = (a, b) => !a.tags.name || !b.tags.name || a.tags.name === b.tags.name;
+  const nameOf = it => it.tags.name || it.tags["piste:name"];
+  const namesOk = (a, b) => !nameOf(a) || !nameOf(b) || nameOf(a) === nameOf(b);
+  // Nodes that run through a point: inner nodes of the loose ways (owner = way id) and all nodes of the others (owner -1).
+  const through = new Map();
+  const addNode = (p, owner) => { const k = keyOf(p[0], p[1]); if (!through.has(k)) through.set(k, []); through.get(k).push({ p, owner }); };
+  for (const w of ways) w.coords.slice(1, -1).forEach(p => addNode(p, w.id));
+  for (const line of others) line.forEach(p => addNode(p, -1));
+  const passesThrough = (p, A, B) => {
+    const cx = Math.floor(p[0] / cell), cy = Math.floor(p[1] / cell);
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++)
+      for (const n of through.get(`${cx + dx}|${cy + dy}`) || [])
+        if (!A.ids.includes(n.owner) && !B.ids.includes(n.owner) && km(p, n.p) <= tolKm) return true;
+    return false;
+  };
   for (;;) {
     const ends = [], grid = new Map();
     items.forEach((it, i) => { if (it.coords.length < 2) return; [0, 1].forEach(end => {
@@ -82,7 +96,7 @@ export function joinWays(ways, tolM = 25) {
       const o = n[0];
       if (o.i === e.i || near(o).length !== 1) continue;
       const A = items[e.i], B = items[o.i];
-      if (!namesOk(A, B)) continue;
+      if (!namesOk(A, B) || passesThrough(e.p, A, B)) continue;
       // Orient both so that A's end meets B's start.
       const a = e.end ? A.coords : A.coords.slice().reverse(), aIds = e.end ? A.ids : A.ids.slice().reverse();
       const b = o.end ? B.coords.slice().reverse() : B.coords, bIds = o.end ? B.ids.slice().reverse() : B.ids;
@@ -92,6 +106,7 @@ export function joinWays(ways, tolM = 25) {
       const tags = {};
       for (const [k, v] of Object.entries(A.tags)) if (B.tags[k] === v) tags[k] = v;
       const name = A.tags.name || B.tags.name; if (name) tags.name = name;
+      const pname = A.tags["piste:name"] || B.tags["piste:name"]; if (pname) tags["piste:name"] = pname;
       items = items.filter((_, i) => i !== e.i && i !== o.i).concat([{ ...joined, tags }]);
       merged = true;
       break;

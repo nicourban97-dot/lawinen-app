@@ -6,6 +6,8 @@ on:
   push:
     paths:
       - "tools/osm-daten.mjs"
+      - "tools/osm-lib.mjs"
+      - "tools/osm-lib.test.mjs"
       - ".github/workflows/osm-daten.yml"
 permissions:
   contents: write
@@ -20,7 +22,8 @@ jobs:
         with:
           node-version: 20
       - run: npm install --no-save --no-package-lock pngjs@7.0.0
-      - run: node --test "tools/*.test.mjs"
+      # No quotes: the shell expands the pattern; node --test only knows globs from Node 21 on.
+      - run: node --test tools/*.test.mjs
       - run: node tools/osm-daten.mjs
       - name: Commit
         run: |

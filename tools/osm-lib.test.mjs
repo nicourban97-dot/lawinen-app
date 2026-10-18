@@ -32,6 +32,20 @@ test("Toleranz 25 m", () => {
   const out = joinWays([w(1, [[10, 47], [10.001, 47.001]]), w(2, [[10.0012, 47.0011], [10.002, 47.003]])]);
   assert.equal(out.length, 1);
 });
+test("verbindet nicht, wenn ein dritter Weg durch den Punkt läuft", () => {
+  const p = [10.001, 47.001];
+  const out = joinWays([w(1, [[10, 47], p]), w(2, [p, [10.002, 47.003]]), w(3, [[10.0, 47.002], p, [10.002, 47.0]])]);
+  assert.equal(out.length, 3);
+});
+test("verbindet nicht, wenn eine Routen-Relation durch den Punkt läuft", () => {
+  const p = [10.001, 47.001];
+  const out = joinWays([w(1, [[10, 47], p]), w(2, [p, [10.002, 47.003]])], 25, [[[10.0, 47.002], p, [10.002, 47.0]]]);
+  assert.equal(out.length, 2);
+});
+test("verbindet nicht bei verschiedenem piste:name", () => {
+  const out = joinWays([w(1, [[10, 47], [10.001, 47.001]], { "piste:name": "A" }), w(2, [[10.001, 47.001], [10.002, 47.003]], { "piste:name": "B" })]);
+  assert.equal(out.length, 2);
+});
 test("Bänder zu 2 Grad ab 5 Grad Ost", () => {
   assert.equal(bandOf(5.0), 0); assert.equal(bandOf(10.3), 2); assert.equal(bandOf(16.4), 5);
 });

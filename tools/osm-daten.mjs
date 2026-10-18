@@ -35,7 +35,7 @@ let joinStats = null;
 async function routes() {
   const q = `[out:json][timeout:900];(way["piste:type"="skitour"](${BBOX});relation["piste:type"="skitour"](${BBOX});relation["route"="ski"](${BBOX}););out geom;`;
   const j = await overpass(q);
-  const feats = [], inRelation = new Set(), loose = [];
+  const feats = [], inRelation = new Set(), loose = [], relLines = [];
   for (const e of j.elements) if (e.type === "relation") for (const m of e.members || []) if (m.type === "way") inRelation.add(m.ref);
   for (const e of j.elements) {
     if (e.type === "way" && e.geometry && e.tags && e.tags["piste:type"] === "skitour") {
@@ -45,6 +45,8 @@ async function routes() {
       const t = e.tags;
       if (t.route === "ski" && t["piste:type"] && t["piste:type"] !== "skitour") continue; // nordic or downhill
       const members = (e.members || []).filter(m => m.type === "way" && m.geometry);
+      // Every relation member counts as a route passing through, so loose pieces are not joined across it.
+      members.forEach(m => relLines.push(m.geometry.map(p => [p.lon, p.lat])));
       const lines = members.map(m => line(m.geometry));
       if (!lines.length) continue;
       feats.push({ type: "Feature", id: `r${e.id}`, properties: { osm: `relation/${e.id}`, osm_ways: members.map(m => `way/${m.ref}`), ...keep(t, ROUTE_TAGS) },
@@ -52,7 +54,7 @@ async function routes() {
     }
   }
   // Pieces of one tour, split in OSM, become one route.
-  const joined = joinWays(loose);
+  const joined = joinWays(loose, 25, relLines);
   joinStats = { before: loose.length, after: joined.length };
   for (const it of joined) feats.push({ type: "Feature", id: `w${it.ids[0]}`,
     properties: { osm: `way/${it.ids[0]}`, osm_ways: it.ids.map(i => `way/${i}`), ...it.tags },
