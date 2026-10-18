@@ -2,7 +2,7 @@
 // and writes compact GeoJSON files to data/, split into bands of 2° longitude. Runs in GitHub Actions (Node 20).
 import { writeFileSync, mkdirSync, rmSync, existsSync } from "node:fs";
 import { PNG } from "pngjs";
-import { simplify, rings, inShape, km, bandOf, joinWays } from "./osm-lib.mjs";
+import { simplify, rings, inShape, km, bandOf, joinWays, buildSearchIndex } from "./osm-lib.mjs";
 
 const AREA = { s: 43.7, w: 5.0, n: 48.4, e: 16.5 }; // the Alps from France to Slovenia
 const BBOX = `${AREA.s},${AREA.w},${AREA.n},${AREA.e}`;
@@ -222,6 +222,9 @@ try {
   say(`vorschlagbar (ab 200 Hm und 1 km, mit Teilgebiet): ${sugg}`);
   const parts = writeParts("skitouren", "skitouren", rt, f => f.properties.st ? f.properties.st.tlon : bboxMidLon(f), meta);
   say(`Tourendateien: ${parts.map(p => `${p.file} ${p.count}`).join(", ")}`);
+  const index = buildSearchIndex(rt);
+  writeFileSync("data/skitouren/search.json", JSON.stringify(index));
+  say(`Suchindex: ${index.length} Touren`);
   if (existsSync("data/skitouren.geojson")) rmSync("data/skitouren.geojson");
 } catch (e) { say("Routen fehlgeschlagen, alte Dateien bleiben:", e.stack || e); }
 try {

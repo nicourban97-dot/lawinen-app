@@ -239,6 +239,13 @@ button.badge { cursor: pointer; font: inherit; }
 .qpanel { flex: 1 0 100%; pointer-events: auto; background: var(--surface); border-radius: 14px; padding: 12px; box-shadow: var(--shadow); display: grid; gap: 10px;
   max-height: min(62vh, 520px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .qchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.msearch-btn { display: grid; place-items: center; padding: 8px 10px; }
+#m-search-q { width: 100%; font-size: 16px; }
+.sresults { display: grid; gap: 4px; }
+.sresults h3 { margin: 8px 0 2px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.sresults button { text-align: left; border: 0; background: transparent; color: var(--fg); padding: 8px 6px; border-radius: 8px; font: inherit; cursor: pointer; }
+.sresults button:hover, .sresults button:focus-visible { background: var(--bg); }
+.sresults button small { display: block; color: var(--muted); font-size: 13px; }
 .qpanel details > summary { font-size: 15px; }
 .qpanel .mpanel { margin-top: 10px; }
 .qchip { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; padding: 7px 12px; border-radius: 99px; border: 0; background: var(--surface); color: var(--fg); box-shadow: var(--shadow); cursor: pointer; }
@@ -399,7 +406,7 @@ input[type=text], input[type=number], input[type=search], select, .datebtn input
 .dot, .lv, .rlevel { box-shadow: inset 0 0 0 1.5px rgba(43, 42, 38, .45); }
 .place { color: #2b2a26; }
 .star { color: var(--btn); }
-.map-bar select { max-width: 42vw; }
+.map-bar select { max-width: min(42vw, calc(100vw - 260px)); }
 .mbtn { padding: 8px 10px; }
 .lage-hint { border: var(--edge); }
 </style>
@@ -443,12 +450,18 @@ input[type=text], input[type=number], input[type=search], select, .datebtn input
         <div id="map" role="region" aria-label="Interaktive Karte"></div>
         <div id="peek" class="peek" hidden role="dialog" aria-label="Kurzinfo zur Tour"></div>
         <div class="map-bar">
+          <button type="button" class="mbtn msearch-btn" id="m-search-btn" aria-label="Suchen: Touren, Gipfel, Orte" aria-expanded="false" aria-controls="m-search">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
           <select id="m-region" aria-label="Region wählen"></select>
           <span class="mspacer"></span>
           <div class="mseg" role="group" aria-label="Darstellung">
             <button type="button" id="m-2d" aria-pressed="true">2D</button><button type="button" id="m-3d" aria-pressed="false">3D</button>
           </div>
           <button type="button" class="mbtn" id="m-layers" aria-expanded="false" aria-controls="m-quick">Ebenen</button>
+          <div class="qpanel" id="m-search" role="search" hidden>
+            <input type="search" id="m-search-q" placeholder="Tour, Gipfel oder Ort" autocomplete="off" enterkeyhint="search" aria-label="Suchbegriff">
+            <div id="m-search-res" class="sresults" aria-live="polite"></div>
+          </div>
           <div class="qpanel" id="m-quick" role="group" aria-label="Ebenen ein- und ausschalten" hidden>
             <div class="qchips" id="m-chips"></div>
             <details id="m-more"><summary>Weitere Einstellungen</summary></details>
@@ -2554,6 +2567,7 @@ function initMap() {
   const shown = ids => ids.filter(id => map.getLayer(id) && map.getLayoutProperty(id, "visibility") !== "none");
   map.on("click", e => {
     if (mapState.panelOpen) { toggleLayersPanel(false); return; }
+    if (mapState.searchOpen) { toggleSearch(false); return; }
     const box = [[e.point.x - 7, e.point.y - 7], [e.point.x + 7, e.point.y + 7]];
     const hit = (ids, at = box) => { const l = shown(ids); return l.length ? map.queryRenderedFeatures(at, { layers: l })[0] : null; };
     const t = hit(["tours"]);
@@ -2692,7 +2706,68 @@ function toggleLayersPanel(open) {
   mapState.panelOpen = open == null ? !mapState.panelOpen : open;
   $("#m-quick").hidden = !mapState.panelOpen;
   $("#m-layers").setAttribute("aria-expanded", String(mapState.panelOpen));
-  if (mapState.panelOpen) renderMapPanel();
+  if (mapState.panelOpen) { toggleSearch(false); renderMapPanel(); }
+}
+// ---------- search: tours and peaks from the index the OSM action writes, places from Open-Meteo geocoding ----------
+let searchIndexP = null;
+function loadSearchIndex() {
+  if (!searchIndexP) searchIndexP = getJSON(`${APP_BASE}data/skitouren/search.json`).catch(e => { searchIndexP = null; throw e; });
+  return searchIndexP;
+}
+const geoCache = new Map();
+function geocode(q) {
+  const k = q.trim().toLowerCase();
+  if (!geoCache.has(k)) {
+    const p = getJSON(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q.trim())}&count=8&language=de&format=json`)
+      .then(r => {
+        const all = (r.results || []).map(x => ({ name: x.name, admin: x.admin1 || "", country: x.country_code || "", lat: x.latitude, lon: x.longitude, elev: x.elevation ?? null }));
+        // Places around the Alps first; others only when there is nothing nearby.
+        const near = all.filter(x => x.lat > 43 && x.lat < 49 && x.lon > 4 && x.lon < 18);
+        return near.length ? near : all;
+      });
+    p.catch(() => geoCache.delete(k));
+    geoCache.set(k, p);
+  }
+  return geoCache.get(k);
+}
+function toggleSearch(open) {
+  mapState.searchOpen = open == null ? !mapState.searchOpen : open;
+  $("#m-search").hidden = !mapState.searchOpen;
+  $("#m-search-btn").setAttribute("aria-expanded", String(mapState.searchOpen));
+  if (mapState.searchOpen) { toggleLayersPanel(false); $("#m-search-q").focus(); loadSearchIndex().catch(() => {}); }
+}
+let searchTimer = null, searchToken = 0;
+function onSearchInput() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(runMapSearch, 300);
+}
+async function runMapSearch() {
+  const q = $("#m-search-q").value, box = $("#m-search-res"), token = ++searchToken;
+  if (q.trim().length < 2) { put(box); return; }
+  const [idx, places] = await Promise.allSettled([loadSearchIndex(), geocode(q)]);
+  if (token !== searchToken) return;
+  const tours = idx.status === "fulfilled" ? searchTours(idx.value, q, 8) : [];
+  const peaks = [...new Map(tours.filter(e => e.p).map(e => [e.p, e])).values()].slice(0, 5);
+  const item = (title, sub, onclick) => el("button", { type: "button", onclick }, title, sub ? el("small", { text: sub }) : null);
+  const groups = [];
+  if (tours.length) groups.push(el("h3", { text: "Touren" }), tours.map(e => item(e.n || e.p || "Skitour", e.p && e.n ? `Gipfel ${e.p}` : "", () => searchGoTour(e))));
+  if (peaks.length) groups.push(el("h3", { text: "Gipfel" }), peaks.map(e => item(e.p, "", () => searchGo(e.x, e.y, 13))));
+  if (places.status === "fulfilled" && places.value.length)
+    groups.push(el("h3", { text: "Orte" }), places.value.slice(0, 5).map(pl => item(pl.name, [pl.admin, pl.country, pl.elev != null ? `${Math.round(pl.elev)} m` : ""].filter(Boolean).join(", "), () => searchGo(pl.lon, pl.lat, 12))));
+  else if (places.status !== "fulfilled") groups.push(el("h3", { text: "Orte" }), el("p", { class: "status", text: "Ortssuche nicht erreichbar." }));
+  if (idx.status !== "fulfilled") groups.push(el("p", { class: "status", text: "Tourensuche nicht erreichbar." }));
+  put(box, groups.length ? groups : el("p", { class: "status", text: "Nichts gefunden." }));
+}
+function searchGo(lon, lat, zoom) {
+  toggleSearch(false);
+  mapState.map.flyTo({ center: [lon, lat], zoom, duration: 900 });
+}
+async function searchGoTour(e) {
+  searchGo(e.x, e.y, 13);
+  if (!mapState.filter.routes) toggleLayer("routes");
+  await loadRoutes([e.x - 0.15, e.y - 0.1, e.x + 0.15, e.y + 0.1]).catch(() => {});
+  const f = findRoute(e.o);
+  if (f) showRoute(f);
 }
 function refreshSlope() {
   const m = mapState.map; if (!m || !mapState.ready) return;
@@ -3474,6 +3549,9 @@ $("#sheet-close").addEventListener("click", () => closeSheet());
 $("#sheet-bg").addEventListener("click", () => closeSheet());
 $("#btn-settings").addEventListener("click", () => openSheet("Einstellungen", $("#settings-src"), document.body));
 $("#m-layers").addEventListener("click", () => toggleLayersPanel());
+$("#m-search-btn").addEventListener("click", () => toggleSearch());
+$("#m-search-q").addEventListener("input", onSearchInput);
+$("#m-search-q").addEventListener("keydown", e => { if (e.key === "Enter") { clearTimeout(searchTimer); runMapSearch(); } if (e.key === "Escape") toggleSearch(false); });
 $("#m-more").append($("#m-panel")); $("#m-panel").hidden = false;
 $("#m-title").addEventListener("click", () => mapState.region && openRegionSheet(mapState.region));
 

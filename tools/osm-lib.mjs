@@ -57,6 +57,16 @@ export function inShape(lon, lat, geom) {
 // Bands of 2 degrees longitude from 5° E, used to split the data files.
 export const bandOf = lon => Math.floor((lon - 5) / 2);
 
+// Small search index over all suggestable tours (same rule as the app: at least 200 m ascent and 1 km length),
+// so the map search finds tours without loading every band. Point = summit, 5 decimals.
+export function buildSearchIndex(feats) {
+  const r5 = x => Math.round(x * 1e5) / 1e5;
+  return feats.filter(f => f.properties.st && f.properties.st.asc >= 200 && f.properties.st.len >= 1000).map(f => {
+    const p = f.properties, st = p.st;
+    return { n: p.name || p["piste:name"] || "", p: p.peak || "", o: p.osm, x: r5(st.tlon), y: r5(st.tlat), b: bandOf(st.tlon) };
+  });
+}
+
 // OSM often splits one tour into several ways. Pieces are joined where exactly two ends meet (within tolM metres)
 // and their names agree (or only one has a name). At a junction of three or more ends nothing is joined, nor where
 // another way passes through the point (an inner node of a loose way, or any node of `others`, e.g. route relations).

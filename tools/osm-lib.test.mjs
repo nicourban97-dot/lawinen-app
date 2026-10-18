@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { joinWays, bandOf } from "./osm-lib.mjs";
+import { joinWays, bandOf, buildSearchIndex } from "./osm-lib.mjs";
 
 const w = (id, coords, tags = {}) => ({ id, coords, tags: { "piste:type": "skitour", ...tags } });
 
@@ -45,6 +45,11 @@ test("verbindet nicht, wenn eine Routen-Relation durch den Punkt läuft", () => 
 test("verbindet nicht bei verschiedenem piste:name", () => {
   const out = joinWays([w(1, [[10, 47], [10.001, 47.001]], { "piste:name": "A" }), w(2, [[10.001, 47.001], [10.002, 47.003]], { "piste:name": "B" })]);
   assert.equal(out.length, 2);
+});
+test("Suchindex nur aus vorschlagbaren Touren", () => {
+  const f = (osm, len, asc, name) => ({ properties: { osm, name, peak: "Gipfel " + osm, st: { len, asc, tlon: 10.123456, tlat: 47.654321 } } });
+  const idx = buildSearchIndex([f("relation/1", 3000, 800, "A"), f("way/2", 500, 100, "Stück")]);
+  assert.deepEqual(idx, [{ n: "A", p: "Gipfel relation/1", o: "relation/1", x: 10.12346, y: 47.65432, b: 2 }]);
 });
 test("Bänder zu 2 Grad ab 5 Grad Ost", () => {
   assert.equal(bandOf(5.0), 0); assert.equal(bandOf(10.3), 2); assert.equal(bandOf(16.4), 5);
