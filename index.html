@@ -145,6 +145,19 @@ details > summary { cursor: pointer; color: var(--accent); font-weight: 700; }
 .powder .prow .cm { font-weight: 700; color: var(--powder-line); }
 .powder .prow .btn { padding: 6px 12px; min-height: 0; }
 label.check { display: flex; align-items: center; gap: 10px; }
+.peek { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 6; max-height: 25vh; overflow: hidden; background: var(--surface); color: var(--ink);
+  border: var(--edge); border-radius: 16px; box-shadow: 0 6px 24px rgba(0,0,0,.25); padding: 6px 14px 12px; display: grid; gap: 8px; cursor: pointer; touch-action: none; }
+.peek[hidden] { display: none; }
+.peek .grip { width: 40px; height: 4px; border-radius: 2px; background: var(--line); justify-self: center; }
+.peek .pname { font: 700 17px/1.2 var(--font-head); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.peek .pfacts { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 15px; }
+.peek .pfacts b { font-weight: 700; }
+.peek .pfacts .lv { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; font: 700 18px/1 var(--font-display); color: #111; }
+.peek .lv.l0 { background: var(--l0); color: var(--fg); } .peek .lv.l1 { background: var(--l1); } .peek .lv.l2 { background: var(--l2); }
+.peek .lv.l3 { background: var(--l3); } .peek .lv.l4 { background: var(--l4); color: #fff; } .peek .lv.l5 { background: var(--l5); color: #fff; }
+.peek .row { display: flex; gap: 8px; }
+.peek .row .btn { padding: 6px 14px; min-height: 0; }
+button.badge { cursor: pointer; font: inherit; }
 
 /* Region sheet / bulletin */
 .region-head { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; align-items: center; }
@@ -428,6 +441,7 @@ input[type=text], input[type=number], input[type=search], select, .datebtn input
     <section class="page" id="page-karte" aria-label="Karte" hidden>
       <div class="map-wrap" id="map-wrap">
         <div id="map" role="region" aria-label="Interaktive Karte"></div>
+        <div id="peek" class="peek" hidden role="dialog" aria-label="Kurzinfo zur Tour"></div>
         <div class="map-bar">
           <select id="m-region" aria-label="Region wählen"></select>
           <span class="mspacer"></span>
@@ -1231,10 +1245,14 @@ function renderAreas() {
       el("div", { class: "arealist", style: "margin-top:10px" }, rest.map(areaRow))));
 }
 // ---------- rendering: tours ----------
-function tourBadge(ev) {
+// "Lage prüfen" opens the region's full bulletin; the click must not reach the card or the map below.
+function lageButton(regionId, text = "Lage prüfen", cls = "badge") {
+  return el("button", { class: cls, type: "button", onclick: e => { e.stopPropagation(); openBulletinFor(regionId); }, text });
+}
+function tourBadge(ev, regionId) {
   return ev.status === "stop" ? el("span", { class: "badge stop", text: "Kein Vorschlag" })
     : ev.status === "warn" ? el("span", { class: "badge warn", text: "Warnung Stufe 3" })
-    : ev.status === "go" ? el("span", { class: "badge", text: "Lage prüfen" })
+    : ev.status === "go" ? lageButton(regionId)
     : el("span", { class: "badge", text: "Kein Bericht" });
 }
 const regionName = id => regionLabel(id);
@@ -1248,7 +1266,7 @@ function tourNode(t, withActions) {
   const ev = evaluateTour(t);
   return el("div", { class: "tour" },
     el("div", { class: "top" },
-      levelDot(ev.level), el("span", { class: "name", text: t.name }), tourBadge(ev), ev.status !== "none" ? riskBadge(tourRiskNow(t)) : null,
+      levelDot(ev.level), el("span", { class: "name", text: t.name }), tourBadge(ev, t.region), ev.status !== "none" ? riskBadge(tourRiskNow(t)) : null,
       t.path || t.fromRoute ? el("span", { class: "badge", text: "mit Spur" }) : null,
       t.example ? el("span", { class: "badge", text: "Beispiel, Angaben prüfen" }) : null,
       withActions ? el("span", { class: "acts" },
@@ -1484,7 +1502,7 @@ async function renderTourDetail() {
     : null;
   put(box, el("div", { class: "areas" },
     el("div", { class: "tour" },
-      el("div", { class: "top" }, levelDot(ev.level), el("span", { class: "name", text: t.name }), tourBadge(ev),
+      el("div", { class: "top" }, levelDot(ev.level), el("span", { class: "name", text: t.name }), tourBadge(ev, t.region),
         t.example ? el("span", { class: "badge", text: "Beispiel, Angaben prüfen" }) : null,
         t.lat != null ? el("span", { class: "acts" }, el("button", { class: "btn ghost", type: "button", onclick: () => focusTour(t), text: "Auf der Karte" })) : null),
       el("div", { class: "meta", text: `${regionName(t.region)} · Gipfel ${t.top} m${t.lat != null ? ` · ${t.lat.toFixed(4)}, ${t.lon.toFixed(4)}` : ""}` }),
@@ -2118,24 +2136,85 @@ async function showRoute(feature) {
   m.setFilter("route-sel", ["==", ["get", "osm"], feature.properties.osm]);
   m.setFilter("route-sel-casing", ["==", ["get", "osm"], feature.properties.osm]);
   drawRisk(null);
-  // The whole track in view, so it can be read once the sheet is closed.
-  m.fitBounds(bboxOf(feature.geometry), { padding: { top: 120, bottom: 60, left: 40, right: 50 }, maxZoom: 14, duration: 500 });
+  // First only the short info at the bottom; the whole track stays in view above it.
   const holder = el("div", { style: "display:grid;gap:12px" });
-  openSheet(routeName(feature.properties), holder, null, "route");
-  put(holder, routePanel());
+  openPeek("route", feature, () => { openSheet(routeName(feature.properties), holder, null, "route"); put(holder, routePanel()); });
+  m.fitBounds(bboxOf(feature.geometry), { padding: peekPadding(), maxZoom: 14, duration: 500 });
   const { info, tr } = await riskOf(feature.properties.osm, feature.geometry).catch(() => ({ info: null, tr: null }));
   if (!mapState.route || mapState.route.feature !== feature) return;
   Object.assign(mapState.route, { info: info || "fail", tr });
-  drawRisk(tr);
+  drawRisk(tr); peekInfo("route", feature, info);
   if (holder.isConnected) put(holder, routePanel());
   const near = tr ? await accNear(tr.rows) : null;
   if (!mapState.route || mapState.route.feature !== feature) return;
   mapState.route.near = near;
   if (holder.isConnected) put(holder, routePanel());
 }
+// ---------- short info (peek) for a tapped tour ----------
+function peekFacts(kind, item, info) {
+  let name, region, top, lenM = null, ascM = null;
+  if (kind === "route") {
+    const p = item.properties, st = p.st || {};
+    name = routeName(p); region = p.region || ""; top = st.top ?? null; lenM = st.len ?? null; ascM = st.asc ?? null;
+  } else { name = item.name; region = item.region || ""; top = item.top ?? null; }
+  if (info && info !== "fail") { lenM = info.length; ascM = info.ascent; }
+  const c = region ? compiled(region) : null;
+  const level = c && top != null ? levelAt(c, top) : c ? c.max : null;
+  return { name, region, level, lenKm: lenM != null ? lenM / 1000 : null, asc: ascM != null ? Math.round(ascM / 10) * 10 : null,
+    minutes: lenM != null && ascM != null ? tourMinutes(lenM, ascM) : null };
+}
+function peekPadding() {
+  const pk = $("#peek"), h = pk && !pk.hidden ? pk.offsetHeight : 0;
+  return { top: 120, bottom: h + 20, left: 40, right: 50 };
+}
+function renderPeek() {
+  const pk = $("#peek"), s = mapState.peek; if (!s) return;
+  const f = peekFacts(s.kind, s.item, s.info);
+  put(pk, el("div", { class: "grip" }), el("div", { class: "pname", text: f.name }),
+    el("div", { class: "pfacts" },
+      el("span", { class: "lv " + lvlClass(f.level), text: f.level ?? "–", title: f.level != null ? `Lawinenstufe ${f.level}` : "Kein Lagebericht" }),
+      el("span", {}, el("b", { text: f.lenKm != null ? `${num(f.lenKm, 1)} km` : "– km" })),
+      el("span", {}, el("b", { text: f.asc != null ? `${f.asc} Hm` : "– Hm" })),
+      el("span", {}, el("b", { text: f.minutes != null ? fmtDuration(f.minutes) : "Dauer –" }))),
+    el("div", { class: "row" },
+      el("button", { class: "btn ghost", type: "button", onclick: e => { e.stopPropagation(); openBulletinFor(f.region); }, text: "Lage" }),
+      typeof openTourWeather === "function" ? el("button", { class: "btn ghost", type: "button", onclick: e => { e.stopPropagation(); openTourWeather(s.kind, s.item); }, text: "Wetter" }) : null,
+      el("button", { class: "btn", type: "button", onclick: e => { e.stopPropagation(); s.onFull(); }, text: "Details" })));
+}
+function openPeek(kind, item, onFull) {
+  mapState.peek = { kind, item, onFull: onFull || (() => {}), info: null };
+  // Whoever taps a tour has understood the first-time hint; it would cover the track.
+  if (!$("#m-tip").hidden) { $("#m-tip").hidden = true; store.set("lawinenapp.maptip.v1", true); }
+  $("#peek").hidden = false;
+  renderPeek();
+}
+function closePeek() {
+  mapState.peek = null;
+  const pk = $("#peek"); if (pk) { pk.hidden = true; put(pk); }
+}
+// The track's computed stats replace the stored ones once they arrive.
+function peekInfo(kind, item, info) {
+  const s = mapState.peek;
+  if (s && s.kind === kind && s.item === item) { s.info = info; renderPeek(); }
+}
+function initPeek() {
+  const pk = $("#peek"); let y0 = null;
+  pk.addEventListener("click", () => { if (mapState.peek) mapState.peek.onFull(); });
+  pk.addEventListener("touchstart", e => { y0 = e.touches[0].clientY; }, { passive: true });
+  pk.addEventListener("touchend", e => {
+    if (y0 == null) return;
+    const dy = e.changedTouches[0].clientY - y0; y0 = null;
+    if (dy > 40) { closePeek(); clearSelection(); }
+    else if (dy < -40 && mapState.peek) mapState.peek.onFull();
+  }, { passive: true });
+}
+function openBulletinFor(regionId) {
+  if (regionId) { openRegionSheet(regionId); return; }
+  openSheet("Lagebericht", el("p", { class: "status", text: "Für diese Tour ist keine Lawinenregion bekannt." }));
+}
 // The selected track stays drawn with its risk sections after the sheet closes; a tap on empty map clears it.
 function clearSelection() {
-  mapState.route = null; mapState.tourSelId = null;
+  mapState.route = null; mapState.tourSelId = null; closePeek();
   const m = mapState.map; if (!m || !mapState.ready) return;
   m.setFilter("route-sel", ["==", ["get", "osm"], "-"]);
   m.setFilter("route-sel-casing", ["==", ["get", "osm"], "-"]);
@@ -2162,7 +2241,7 @@ function routePanel() {
   const kpi = (k, v, s) => el("div", { class: "kpi" }, el("div", { class: "k", text: k }), el("div", { class: "v", text: v }), s ? el("div", { class: "s", text: s }) : null);
   const steepTxt = SLOPE_CLASSES.map((c, k) => info.cls[k] >= 30 ? `${c.label}: ${num(info.cls[k] / 1000, 1).replace(/^0,0$/, "<0,1")} km` : null).filter(Boolean).join(" · ");
   return el("div", { class: "panel" }, head,
-    el("div", { class: "top" }, levelDot(ev.level), el("span", { text: pseudo.region ? regionLabel(pseudo.region) : "außerhalb der Teilgebiete" }), pseudo.region ? tourBadge(ev) : null),
+    el("div", { class: "top" }, levelDot(ev.level), el("span", { text: pseudo.region ? regionLabel(pseudo.region) : "außerhalb der Teilgebiete" }), pseudo.region ? tourBadge(ev, pseudo.region) : null),
     ev.notes.length ? el("ul", { class: "notes" }, ev.notes.map(n => el("li", { text: n }))) : null,
     riskBlock(mapState.route.tr, mapState.route.near),
     el("div", { class: "kpis" },
@@ -2180,6 +2259,7 @@ function routePanel() {
             const t = routeAsTour(p, info); state.tours.push(t); saveTours();
             e.target.replaceWith(el("span", { class: "status", text: `Als Tour „${t.name}“ gespeichert. Bitte Name und Angaben prüfen.` }));
           }, text: "Als Tour speichern" }),
+      lageButton(pseudo.region, "Lagebericht", "btn ghost"),
       el("a", { class: "btn ghost", href: avLink(p), target: "_blank", rel: "noopener", text: "Bei alpenvereinaktiv ansehen" }),
       el("a", { class: "btn ghost", href: `https://www.openstreetmap.org/${p.osm}`, target: "_blank", rel: "noopener", text: "In OpenStreetMap" })));
 }
@@ -2600,7 +2680,7 @@ function tourPopup(id) {
   const ev = evaluateTour(t);
   const content = el("div", { class: "popup" },
     el("div", { class: "top" }, levelDot(ev.level), el("b", { text: t.name })),
-    el("div", { class: "status", text: `${regionLabel(t.region)} · ${t.top} m` }), tourBadge(ev),
+    el("div", { class: "status", text: `${regionLabel(t.region)} · ${t.top} m` }), tourBadge(ev, t.region),
     el("div", {}, el("button", { class: "btn ghost", type: "button", onclick: () => showTour(t.id), text: "Tour im Detail" })));
   new maplibregl.Popup({ closeButton: true, maxWidth: "260px" }).setLngLat([t.lon, t.lat]).setDOMContent(content).addTo(m);
 }
@@ -2631,24 +2711,29 @@ async function selectTourLine(id) {
   const t = state.tours.find(x => x.id === id), g = t && tourGeom(t), m = mapState.map; if (!g || !m) return;
   clearSelection(); mapState.tourSelId = id;
   m.setFilter("tourline-sel", ["==", ["get", "id"], id]);
-  m.fitBounds(bboxOf(g), { padding: { top: 120, bottom: 60, left: 40, right: 50 }, maxZoom: 14, duration: 500 });
   const holder = el("div", { style: "display:grid;gap:12px" });
+  let last = [undefined];
+  openPeek("tour", t, () => { openSheet(t.name, holder, null, "route"); draw(...last); });
+  m.fitBounds(bboxOf(g), { padding: peekPadding(), maxZoom: 14, duration: 500 });
   const draw = (tr, near, info) => {
     const ev = evaluateTour(t);
     put(holder, el("div", { class: "panel" },
-      el("div", { class: "top" }, levelDot(ev.level), el("span", { class: "name", text: t.name }), tourBadge(ev)),
+      el("div", { class: "top" }, levelDot(ev.level), el("span", { class: "name", text: t.name }), tourBadge(ev, t.region)),
       el("div", { class: "status", text: `${regionLabel(t.region)} · Gipfel ${t.top} m${info ? ` · ${num(info.length / 1000, 1)} km · rund ${Math.round(info.ascent / 10) * 10} Hm` : ""}` }),
       tr === undefined ? el("p", { class: "status", text: "Berechne Gefahrenabschnitte …" }) : riskBlock(tr, near),
       info ? profileSvg(info.profile, tr) : null,
-      el("div", { class: "row" }, el("button", { class: "btn", type: "button", onclick: () => showTour(t.id), text: "Tour im Detail" }))));
+      el("div", { class: "row" }, el("button", { class: "btn", type: "button", onclick: () => showTour(t.id), text: "Tour im Detail" }),
+        lageButton(t.region, "Lagebericht", "btn ghost"))));
   };
-  openSheet(t.name, holder, null, "route");
-  draw(undefined);
   const { info, tr } = await riskOf(tourKey(t), g).catch(() => ({ info: null, tr: null }));
   if (mapState.tourSelId !== id) return;
-  drawRisk(tr); draw(tr, undefined, info);
+  last = [tr, undefined, info];
+  drawRisk(tr); peekInfo("tour", t, info);
+  if (holder.isConnected) draw(...last);
   const near = tr ? await accNear(tr.rows) : null;
-  if (mapState.tourSelId === id && holder.isConnected) draw(tr, near, info);
+  if (mapState.tourSelId !== id) return;
+  last = [tr, near, info];
+  if (holder.isConnected) draw(...last);
 }
 function focusTour(t) {
   if (t.lat == null) return;
@@ -2907,7 +2992,7 @@ function routeCard({ f, ev, pseudo, dist }, snow) {
   const already = savedFromRoute(p);
   return el("div", { class: "tour" },
     el("div", { class: "top" }, levelDot(ev.level), el("span", { class: "name", text: routeTitle(p) }),
-      ev.status === "warn" ? el("span", { class: "badge warn", text: "Warnung Stufe 3" }) : ev.status === "go" ? el("span", { class: "badge", text: "Lage prüfen" }) : el("span", { class: "badge", text: "ohne Bewertung" }),
+      ev.status === "warn" ? el("span", { class: "badge warn", text: "Warnung Stufe 3" }) : ev.status === "go" ? lageButton(p.region) : el("span", { class: "badge", text: "ohne Bewertung" }),
       ev.status !== "none" ? riskBadge(tourRisk(pseudo)) : null,
       p["piste:difficulty"] ? el("span", { class: "badge", text: DIFFICULTY[p["piste:difficulty"]] || p["piste:difficulty"] }) : null),
     el("div", { class: "meta", text: [regionLabel(p.region), dist != null ? `${num(dist)} km entfernt` : null, `${st.asc} Hm`, `${num(st.len / 1000, 1)} km`, `bis ${pseudo.top} m`, `steilste Stelle ${st.max}°`,
@@ -3311,7 +3396,7 @@ $("#t-gpx").addEventListener("change", async e => {
   } catch (err) { info.textContent = "Die Datei konnte nicht gelesen werden."; }
 });
 document.querySelectorAll("nav.tabbar button").forEach(b => b.addEventListener("click", () => { closeSheet(); goPage(b.dataset.page); }));
-initSwipe();
+initSwipe(); initPeek();
 $("#tv-sugg").addEventListener("click", () => setTourView("sugg"));
 $("#tv-mine").addEventListener("click", () => setTourView("mine"));
 $("#detail-back").addEventListener("click", () => setTourView("mine"));
