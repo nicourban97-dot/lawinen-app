@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const m = html.match(/\/\/ --- pure:start ---([\s\S]*?)\/\/ --- pure:end ---/);
 if (!m) throw new Error("pure block missing in index.html");
-const P = new Function(m[1] + "; return { tourMinutes, fmtDuration, swipePage, powderList, searchTours };")();
+const P = new Function(m[1] + "; return { tourMinutes, fmtDuration, swipePage, powderList, searchTours, boxAround };")();
 
 test("Dauer nach Alpenvereinsregel", () => {
   assert.equal(P.tourMinutes(3951, 972), 224);     // h=3.24, w=0.988 -> 3.73 h
@@ -38,4 +38,7 @@ test("Tourensuche", () => {
   assert.deepEqual(P.searchTours(idx, "HORN").map(e => e.n), ["Hornspitze", "Rauhhorn", "Über die Gaißhornscharte"]); // Wortanfang zuerst
   assert.deepEqual(P.searchTours(idx, "gaißhorn").map(e => e.p), ["Gaißhorn"]);
   assert.deepEqual(P.searchTours(idx, " "), []);
+});
+test("Rechteck um einen Punkt im Format von loadParts", () => {
+  assert.deepEqual(P.boxAround(6.9, 45.9, 0.15, 0.1), [[6.75, 45.8], [7.050000000000001, 46]]);
 });

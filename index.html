@@ -809,6 +809,8 @@ function searchTours(index, q, limit = 8) {
   }
   return hits.sort((a, b) => a.start - b.start).slice(0, limit).map(h => h.e);
 }
+// Box around a point in the shape loadParts expects: [[west, south], [east, north]].
+const boxAround = (x, y, dx, dy) => [[x - dx, y - dy], [x + dx, y + dy]];
 // --- pure:end ---
 
 // ---------- state ----------
@@ -2724,6 +2726,12 @@ const quickList = () => QUICK.filter(([k]) => k !== "powder" || state.powder.on)
 const powderLayerOn = () => state.powder.on && mapState.filter.powder !== false;
 // Frosted white over the danger colours reads as snow and does not mix into the greens of wildlife zones.
 const POWDER_COLORS = { 1: "#f6fbff", 2: "#cfe5fb" }, POWDER_LINE = "#2f7fd0";
+function clearPowderLayer() {
+  const m = mapState.map; if (!m || !mapState.ready) return;
+  m.getSource("powder").setData({ type: "FeatureCollection", features: [] });
+  m.setFilter("route-powder", ["in", ["get", "region"], ["literal", []]]);
+  mapState.powderCount = 0;
+}
 function refreshPowderLayer() {
   const m = mapState.map; if (!m || !mapState.ready) return;
   let feats = [];
@@ -2820,7 +2828,7 @@ function searchGo(lon, lat, zoom) {
 async function searchGoTour(e) {
   searchGo(e.x, e.y, 13);
   if (!mapState.filter.routes) toggleLayer("routes");
-  await loadRoutes([e.x - 0.15, e.y - 0.1, e.x + 0.15, e.y + 0.1]).catch(() => {});
+  await loadRoutes(boxAround(e.x, e.y, 0.15, 0.1)).catch(() => {});
   const f = findRoute(e.o);
   if (f) showRoute(f);
 }
@@ -3476,6 +3484,8 @@ function setDate(d) {
   const today = ymd(new Date());
   $("#btn-today").setAttribute("aria-pressed", String(d === today));
   $("#btn-tomorrow").setAttribute("aria-pressed", String(d === addDays(today, 1)));
+  // Nothing of the previous day may stay visible under the new date: the tapped tour and the new-snow areas go at once.
+  clearSelection(); clearPowderLayer();
   load();
 }
 function saveTours() { store.set("lawinenapp.tours.v1", state.tours); renderTours(); renderPowder(); renderTourDetail(); updateMap(); }
