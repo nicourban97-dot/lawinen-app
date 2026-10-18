@@ -582,7 +582,7 @@ input[type=text], input[type=number], input[type=search], select, .datebtn input
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script>
 "use strict";
-const VERSION = "0.8";
+const VERSION = "0.9";
 const LEVELS = { no_snow: 0, no_rating: 0, low: 1, moderate: 2, considerable: 3, high: 4, very_high: 5 };
 const LEVEL_NAME = ["keine Angabe", "gering", "mäßig", "erheblich", "groß", "sehr groß"];
 const PROBLEM = {
@@ -725,6 +725,44 @@ const distKm = (a, b) => {
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
 };
+
+// --- pure:start ---
+// Helpers without DOM or state access; tools/app-pure.test.mjs cuts this block out and tests it.
+// Ascent time after the Alpenverein rule: 300 m height and 4 km distance per hour, the larger plus half the smaller.
+function tourMinutes(lenM, ascM) {
+  const h = ascM / 300, w = lenM / 1000 / 4;
+  return Math.round((Math.max(h, w) + Math.min(h, w) / 2) * 60);
+}
+function fmtDuration(min) {
+  const q = Math.max(15, Math.round(min / 15) * 15), h = Math.floor(q / 60), m = q % 60;
+  return "ca. " + (h ? `${h} h` + (m ? ` ${m} min` : "") : `${m} min`);
+}
+// Page change for a horizontal swipe: clearly horizontal and at least 60 px, no wrap-around at the ends.
+function swipePage(pages, current, dx, dy) {
+  if (Math.abs(dx) < 60 || Math.abs(dx) <= 2 * Math.abs(dy)) return null;
+  const i = pages.indexOf(current) + (dx < 0 ? 1 : -1);
+  return i >= 0 && i < pages.length ? pages[i] : null;
+}
+// Highest new snow per area in the chosen period, only areas at or above the threshold, most snow first.
+function powderList(points, threshold, period) {
+  const best = new Map();
+  for (const p of points) if (p.area && p[period] != null && p[period] > (best.get(p.area) ?? -1)) best.set(p.area, p[period]);
+  return [...best].filter(([, cm]) => cm >= threshold).sort((a, b) => b[1] - a[1]).map(([area, cm]) => ({ area, cm: Math.round(cm) }));
+}
+const foldText = s => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+// Tour search over name and peak; ignores case and accents, matches at the start of a word come first.
+function searchTours(index, q, limit = 8) {
+  const k = foldText(q).trim();
+  if (!k) return [];
+  const hits = [];
+  for (const e of index) {
+    const t = foldText(`${e.n || ""} ${e.p || ""}`);
+    if (!t.includes(k)) continue;
+    hits.push({ e, start: (" " + t.replace(/[^\p{L}\p{N}]+/gu, " ")).includes(" " + k) ? 0 : 1 });
+  }
+  return hits.sort((a, b) => a.start - b.start).slice(0, limit).map(h => h.e);
+}
+// --- pure:end ---
 
 // ---------- state ----------
 function migrateTours(list) {
