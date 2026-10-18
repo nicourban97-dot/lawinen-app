@@ -1802,7 +1802,7 @@ const mapState = {
     const saved = store.get("lawinenapp.mapfilter.v1", {});
     // Version 0.7 starts with danger zones, tours and incidents; the slope layer stays available but off, both colour slopes.
     if (!("hazard" in saved)) Object.assign(saved, { hazard: true, slope: false, routes: true, acc: true });
-    return Object.assign({ hazard: true, slope: false, slopes: [true, true, true, true], aspects: [...ASPECTS], minElev: 0, snow: false, wild: false, routes: true, acc: true, accPeriod: "5" }, saved);
+    return Object.assign({ hazard: true, slope: false, slopes: [true, true, true, true], aspects: [...ASPECTS], minElev: 0, snow: false, wild: false, routes: true, acc: true, accPeriod: "5", powder: true }, saved);
   })()
 };
 // --- extra map layers: snow depth at stations, wildlife zones and ski touring routes (OpenStreetMap, refreshed weekly by a GitHub Action) ---
@@ -2496,7 +2496,8 @@ function initMap() {
         acc: { type: "geojson", data: { type: "FeatureCollection", features: [] }, cluster: true, clusterMaxZoom: 11, clusterRadius: 34 },
         routes: { type: "geojson", data: { type: "FeatureCollection", features: [] } },
         wild: { type: "geojson", data: { type: "FeatureCollection", features: [] } },
-        snow: { type: "geojson", data: { type: "FeatureCollection", features: [] } }
+        snow: { type: "geojson", data: { type: "FeatureCollection", features: [] } },
+        powder: { type: "geojson", data: { type: "FeatureCollection", features: [] } }
       },
       layers: [
         { id: "topo", type: "raster", source: "topo", paint: { "raster-saturation": -0.75, "raster-opacity": 0.9 } },
@@ -2504,6 +2505,9 @@ function initMap() {
         { id: "sat", type: "raster", source: "sat", layout: { visibility: "none" }, paint: { "raster-saturation": -0.1 } },
         { id: "hillshade", type: "hillshade", source: "hill", layout: { visibility: "none" }, paint: { "hillshade-exaggeration": 0.45, "hillshade-shadow-color": "#3d5263", "hillshade-highlight-color": "#ffffff" } },
         { id: "danger-fill", type: "fill", source: "danger", paint: { "fill-color": levelMatch, "fill-opacity": 0.55 } },
+        { id: "powder-fill", type: "fill", source: "powder", layout: { visibility: "none" },
+          paint: { "fill-color": ["match", ["get", "step"], 2, POWDER_COLORS[2], POWDER_COLORS[1]], "fill-opacity": ["interpolate", ["linear"], ["zoom"], 8, 0.7, 12, 0.35] } },
+        { id: "powder-line", type: "line", source: "powder", layout: { visibility: "none" }, paint: { "line-color": POWDER_LINE, "line-width": 2, "line-opacity": 0.9 } },
         { id: "wild-fill", type: "fill", source: "wild", minzoom: 9, layout: { visibility: "none" }, paint: { "fill-color": "#2e7d32", "fill-opacity": 0.28 } },
         { id: "slope", type: "raster", source: "slope", minzoom: SLOPE_MINZOOM, layout: { visibility: "none" } },
         { id: "hazard", type: "raster", source: "hazard", minzoom: HAZARD_MINZOOM, layout: { visibility: "none" }, paint: { "raster-opacity": 0.9 } },
@@ -2512,6 +2516,7 @@ function initMap() {
         { id: "wild-line", type: "line", source: "wild", minzoom: 9, layout: { visibility: "none" }, paint: { "line-color": "#1b5e20", "line-width": 1.6, "line-dasharray": [2, 1] } },
         { id: "route-casing", type: "line", source: "routes", minzoom: 9, layout: { visibility: "none", "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#ffffff", "line-width": 5, "line-opacity": 0.85 } },
         { id: "route-line", type: "line", source: "routes", minzoom: 9, layout: { visibility: "none", "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#d4002a", "line-width": 2.4 } },
+        { id: "route-powder", type: "line", source: "routes", minzoom: 9, filter: ["in", ["get", "region"], ["literal", []]], layout: { visibility: "none", "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#d4002a", "line-width": 3.9 } },
         { id: "route-sel-casing", type: "line", source: "routes", filter: ["==", ["get", "osm"], "-"], layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#ffffff", "line-width": 9 } },
         { id: "route-sel", type: "line", source: "routes", filter: ["==", ["get", "osm"], "-"], layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#13283a", "line-width": 5 } },
         { id: "tourline-casing", type: "line", source: "tourlines", layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#ffffff", "line-width": 6 } },
@@ -2542,6 +2547,7 @@ function initMap() {
     if (!mapState.shapes.length) showMapMsg("Die Umrisse der Teilgebiete konnten nicht geladen werden.");
     refreshHazard();
     updateMap();
+    refreshPowderLayer();
     const q = mapReadyQueue.splice(0); q.forEach(fn => { try { fn(); } catch (e) { console.error(e); } });
   };
   map.once("style.load", onReady); map.once("load", onReady);
@@ -2631,6 +2637,8 @@ function applyMode() {
   for (const id of ["route-casing", "route-line", "tourline-casing", "tourline", "tours"]) m.setLayoutProperty(id, "visibility", vis(f.routes));
   for (const id of ["acc", "acc-cluster"]) m.setLayoutProperty(id, "visibility", vis(f.acc));
   m.setLayoutProperty("snow", "visibility", vis(f.snow));
+  for (const id of ["powder-fill", "powder-line"]) m.setLayoutProperty(id, "visibility", vis(powderLayerOn()));
+  m.setLayoutProperty("route-powder", "visibility", vis(powderLayerOn() && f.routes));
   renderMapChrome();
   updateZoomHint();
 }
@@ -2641,7 +2649,27 @@ function updateZoomHint() {
   else if (f.slope && z < SLOPE_MINZOOM - 0.01) showMapMsg("Hangneigung: antippen zum Hineinzoomen", SLOPE_MINZOOM + 0.3);
   else showMapMsg(f.hazard && !state.regions.size && mapState.mode === "region" ? "Ohne Lagebericht keine Gefahrenzonen." : "");
 }
-const QUICK = [["hazard", "Gefahrenzonen"], ["routes", "Touren"], ["acc", "Unfälle"], ["slope", "Hangneigung"], ["snow", "Schnee"], ["wild", "Wildschutz"]];
+const QUICK = [["hazard", "Gefahrenzonen"], ["routes", "Touren"], ["powder", "Neuschnee"], ["acc", "Unfälle"], ["slope", "Hangneigung"], ["snow", "Schnee"], ["wild", "Wildschutz"]];
+// The new-snow layer exists only while the Powderalert is switched on in the settings.
+const quickList = () => QUICK.filter(([k]) => k !== "powder" || state.powder.on);
+const powderLayerOn = () => state.powder.on && mapState.filter.powder !== false;
+// Frosted white over the danger colours reads as snow and does not mix into the greens of wildlife zones.
+const POWDER_COLORS = { 1: "#f6fbff", 2: "#cfe5fb" }, POWDER_LINE = "#2f7fd0";
+function refreshPowderLayer() {
+  const m = mapState.map; if (!m || !mapState.ready) return;
+  let feats = [];
+  if (powderLayerOn()) {
+    if (state.powderDate !== state.date && !state.powderLoading) { startPowder(); return; }
+    const pts = state.powderDate === state.date && state.powderPts ? state.powderPts : [];
+    const cm = new Map(pts.map(p => [p.id, p[state.powder.period] || 0])), thr = state.threshold;
+    feats = shapesFor(state.date).filter(f => (cm.get(f.properties.id) || 0) >= thr)
+      .map(f => { const v = cm.get(f.properties.id); return { type: "Feature", geometry: f.geometry, properties: { id: f.properties.id, cm: Math.round(v), step: v >= 2 * thr ? 2 : 1 } }; });
+  }
+  m.getSource("powder").setData({ type: "FeatureCollection", features: feats });
+  m.setFilter("route-powder", ["in", ["get", "region"], ["literal", feats.map(f => f.properties.id)]]);
+  mapState.powderCount = feats.length;
+  applyMode(); renderQuick(); renderLegend();
+}
 function toggleLayer(key) {
   const f = mapState.filter;
   f[key] = !f[key];
@@ -2650,12 +2678,13 @@ function toggleLayer(key) {
   if (key === "slope" && f.slope) f.hazard = false;
   store.set("lawinenapp.mapfilter.v1", f);
   if (key === "slope" && f.slope) refreshSlope(); else applyMode();
+  if (key === "powder") refreshPowderLayer();
   ensureLayerData();
 }
-const activeLayerCount = () => QUICK.filter(([k]) => mapState.filter[k]).length;
+const activeLayerCount = () => quickList().filter(([k]) => mapState.filter[k]).length;
 function renderQuick() {
   const f = mapState.filter;
-  put($("#m-chips"), QUICK.map(([k, label]) => el("button", { type: "button", class: "qchip", "aria-pressed": String(!!f[k]), onclick: () => toggleLayer(k) }, label)));
+  put($("#m-chips"), quickList().map(([k, label]) => el("button", { type: "button", class: "qchip", "aria-pressed": String(!!f[k]), onclick: () => toggleLayer(k) }, label)));
   $("#m-layers").textContent = `Ebenen · ${activeLayerCount()}`;
 }
 // The layer switches stay folded away so the map is free; the button opens them, a tap on the map closes them.
@@ -2835,6 +2864,10 @@ function renderLegend() {
       mapState.snowLabel ? el("div", { class: "lnote", text: mapState.snowLabel }) : null);
   }
   if (f.wild) parts.push(row(el("span", { class: "sw wild-sw" }), "Wildschutz (OSM)"));
+  if (powderLayerOn()) parts.push(el("b", { text: "Neuschnee" }),
+    mapState.powderCount ? [1, 2].map(k => row(el("span", { class: "sw", style: `background:${POWDER_COLORS[k]};outline:2px solid ${POWDER_LINE};outline-offset:-2px` }), `ab ${k * state.threshold} cm`)) : null,
+    el("div", { class: "lnote", text: state.powderDate !== state.date ? "Neuschnee wird geladen …" : !state.powderPts ? "Neuschnee gerade nicht abrufbar."
+      : mapState.powderCount ? `Gefallen bzw. erwartet ${POWDER_PERIODS[state.powder.period]}, auf ${POWDER_ELEV} m. Neuschnee erhöht die Lawinengefahr.` : `Nirgends ab ${state.threshold} cm ${POWDER_PERIODS[state.powder.period]}.` }));
   put(leg, parts);
   leg.hidden = !parts.length;
 }
