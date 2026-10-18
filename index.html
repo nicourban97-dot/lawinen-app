@@ -6,13 +6,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Lawinen-App">
-<meta name="theme-color" content="#f3f6f8">
+<meta name="theme-color" content="#f6f1e7">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-192.png">
 <title>Lawinen-App</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Barlow+Condensed:wght@600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Barlow+Condensed:wght@600;700&family=Bitter:wght@600;700;800&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <style>
 /* Field instrument for the morning check before a tour.
@@ -20,35 +20,47 @@
    Snow-white ground, glacier-navy ink, one signal blue for actions. The EAWS danger colours are the only loud colours,
    because they carry the meaning. Barlow Condensed for headings and the big level numerals (trail-sign feel),
    Atkinson Hyperlegible for everything read in glare and with cold fingers. */
+/* Design "Bergkarte und Wegweiser": paper tones of a printed walking map, strong dark outlines instead of soft
+   shadows, the orange of Alpine signposts for buttons and the active tab. The EAWS and release-risk colours keep
+   their exact values; the signpost orange never marks a warning. */
 :root {
-  --bg: #f3f6f8;
-  --surface: #ffffff;
-  --surface-2: #eaf0f4;
-  --line: #d5dee5;
-  --fg: #13283a;
-  --muted: #5a6e7e;
-  --accent: #1767b0;
-  --accent-ink: #ffffff;
-  --powder: #e3f0fb;
-  --powder-line: #8db8de;
-  --warn-bg: #fff3dc;
-  --warn-line: #d98c1c;
-  --stop-bg: #fde6e3;
-  --stop-line: #c8372d;
-  --snow: #2f7dc0;
-  --shadow: 0 1px 2px rgba(19, 40, 58, .08), 0 4px 14px rgba(19, 40, 58, .08);
-  --l1: #ccff66; --l2: #ffff00; --l3: #ff9900; --l4: #ff0000; --l5: #a30000; --l0: #c9d3da;
+  --bg: #f6f1e7;
+  --surface: #fffaf0;
+  --surface-2: #efe6d4;
+  --line: #d9cdb5;
+  --ink: #2b2a26;
+  --fg: #2b2a26;
+  --muted: #6b6355;
+  --accent: #a4500f;
+  --accent-ink: #fffaf0;
+  --btn: #e8892b;
+  --btn-ink: #2b2a26;
+  --tabbar: #2b2a26;
+  --tab-ink: #cfc5b1;
+  --tab-on: #f0a04b;
+  --powder: #e7eef3;
+  --powder-line: #6f8fa8;
+  --warn-bg: #fbecd2;
+  --warn-line: #c77b16;
+  --stop-bg: #f8e1dc;
+  --stop-line: #b4352b;
+  --snow: #2f6fa8;
+  --shadow: 2px 2px 0 rgba(43, 42, 38, .16);
+  --edge: 1.5px solid var(--ink);
+  --l1: #ccff66; --l2: #ffff00; --l3: #ff9900; --l4: #ff0000; --l5: #a30000; --l0: #cfc6b4;
   --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-head: "Bitter", Georgia, "Times New Roman", serif;
   --font-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
   --tab-h: 58px;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0d1922; --surface: #14232f; --surface-2: #1a2c3a; --line: #2a3e4d; --fg: #e5edf2; --muted: #9bb0bf;
-    --accent: #6cb0e8; --accent-ink: #0d1922; --powder: #12293b; --powder-line: #2f6a96;
-    --warn-bg: #33270f; --warn-line: #c98a2a; --stop-bg: #3a1714; --stop-line: #e0574c; --l0: #3b4a55; --snow: #7cb8ea;
-    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 14px rgba(0, 0, 0, .3);
+    --bg: #1f1c18; --surface: #2b2722; --surface-2: #35302a; --line: #4a4238; --ink: #d9cfbd; --fg: #efe7d8; --muted: #b3a893;
+    --accent: #f0a04b; --accent-ink: #1f1c18; --btn: #f0a04b; --btn-ink: #1f1c18; --tabbar: #14120f; --tab-ink: #a99f8c; --tab-on: #f0a04b;
+    --powder: #232a30; --powder-line: #5f8098;
+    --warn-bg: #3a2c14; --warn-line: #d0922f; --stop-bg: #3d1c17; --stop-line: #e0574c; --l0: #4a4238; --snow: #8cbbe3;
+    --shadow: 2px 2px 0 rgba(0, 0, 0, .35);
     color-scheme: dark;
   }
 }
@@ -306,6 +318,35 @@ img.chart { width: 100%; height: auto; display: block; border-radius: 8px; backg
   .pdetail { grid-template-columns: 44px minmax(0,1fr); } .pdetail svg { width: 44px; height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* Design "Bergkarte und Wegweiser": outlines, signpost orange, serif headings */
+header.top { border-bottom: var(--edge); }
+header.top h1, h2, h3, .sheet-head h2, .area-row .nm, .tour .name, .region-head .t, .bsec h4, .wxday .dn, .mchip, .flabel { font-family: var(--font-head); letter-spacing: 0; }
+header.top h1 { font-size: 24px; font-weight: 800; }
+h2 { font-size: 21px; font-weight: 800; } h3 { font-size: 17px; font-weight: 700; }
+.area-row .nm, .tour .name { font-size: 18px; font-weight: 700; }
+.panel, .area-row, .tour, form.add, .star, .wxday, .riskbox, .powder, .lage-map-wrap, .tablewrap { border: var(--edge); }
+.kpi, .pdetail, .prob { border: 1px solid var(--line); }
+.btn { background: var(--btn); color: var(--btn-ink); border: var(--edge); box-shadow: var(--shadow); }
+.btn.ghost { background: var(--surface); color: var(--fg); border: var(--edge); box-shadow: none; }
+nav.tabbar { background: var(--tabbar); border-top: 0; }
+nav.tabbar button { color: var(--tab-ink); }
+nav.tabbar button[aria-current="page"] { color: var(--tab-on); }
+.seg { background: var(--surface-2); border: var(--edge); }
+.seg button { color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--btn); color: var(--btn-ink); box-shadow: none; }
+.mbtn, .mseg, .qchip, .mchip, .legend, .lage-reset, .qpanel, .map-bar select { border: var(--edge) !important; }
+.mseg button[aria-pressed="true"], .qchip[aria-pressed="true"], .fchip[aria-pressed="true"], .stationlist button[aria-pressed="true"] { background: var(--btn); color: var(--btn-ink); border-color: var(--ink); }
+.fchip, .stationlist button { border: 1.5px solid var(--ink); }
+.badge { border-color: var(--ink); }
+input[type=text], input[type=number], input[type=search], select, .datebtn input { border: 1.5px solid var(--ink); background: var(--surface); }
+.sheet { border-top: var(--edge); }
+.dot, .lv, .rlevel { box-shadow: inset 0 0 0 1.5px rgba(43, 42, 38, .45); }
+.place { color: #2b2a26; }
+.star { color: var(--btn); }
+.map-bar select { max-width: 42vw; }
+.mbtn { padding: 8px 10px; }
+.lage-hint { border: var(--edge); }
 </style>
 </head>
 <body>
@@ -2809,8 +2850,8 @@ function initLageMap() {
         hill: { type: "raster-dem", tiles: [DEM_URL], encoding: "terrarium", tileSize: 256, maxzoom: 10, attribution: "Gelände: Terrain Tiles (AWS Open Data) · Gebiete: EAWS" },
         danger: { type: "geojson", data: { type: "FeatureCollection", features: [] } } },
       layers: [
-        { id: "bg", type: "background", paint: { "background-color": "#eef2f5" } },
-        { id: "hill", type: "hillshade", source: "hill", paint: { "hillshade-exaggeration": 0.65, "hillshade-shadow-color": "#3d5263", "hillshade-highlight-color": "#ffffff" } },
+        { id: "bg", type: "background", paint: { "background-color": "#efe6d4" } },
+        { id: "hill", type: "hillshade", source: "hill", paint: { "hillshade-exaggeration": 0.65, "hillshade-shadow-color": "#5a4f3f", "hillshade-highlight-color": "#fffaf0" } },
         { id: "fill", type: "fill", source: "danger", paint: { "fill-color": levelMatch, "fill-opacity": ["case", ["==", ["get", "level"], 0], 0.3, 0.78] } },
         { id: "line", type: "line", source: "danger", paint: { "line-color": "#ffffff", "line-width": 0.9 } },
         { id: "sel", type: "line", source: "danger", filter: ["==", ["get", "id"], "-"], paint: { "line-color": "#13283a", "line-width": 3 } }] }
