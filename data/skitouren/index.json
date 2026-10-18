@@ -1,0 +1,54 @@
+{
+ "generated": "2026-10-18T12:10:24.994Z",
+ "source": "OpenStreetMap-Mitwirkende (ODbL)",
+ "parts": [
+  {
+   "file": "skitouren-0.geojson",
+   "w": 5.74645,
+   "s": 44.21621,
+   "e": 7.01455,
+   "n": 47.02162,
+   "count": 277
+  },
+  {
+   "file": "skitouren-1.geojson",
+   "w": 6.9605,
+   "s": 44.08772,
+   "e": 8.94871,
+   "n": 47.90258,
+   "count": 278
+  },
+  {
+   "file": "skitouren-2.geojson",
+   "w": 9.08044,
+   "s": 44.11204,
+   "e": 11.02664,
+   "n": 48.07687,
+   "count": 406
+  },
+  {
+   "file": "skitouren-3.geojson",
+   "w": 10.98881,
+   "s": 45.67319,
+   "e": 13.05859,
+   "n": 47.79114,
+   "count": 327
+  },
+  {
+   "file": "skitouren-4.geojson",
+   "w": 12.97895,
+   "s": 46.19622,
+   "e": 15.01226,
+   "n": 47.89907,
+   "count": 316
+  },
+  {
+   "file": "skitouren-5.geojson",
+   "w": 15.06938,
+   "s": 47.6066,
+   "e": 15.85711,
+   "n": 47.95991,
+   "count": 22
+  }
+ ]
+}

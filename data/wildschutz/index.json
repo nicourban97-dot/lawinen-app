@@ -1,0 +1,54 @@
+{
+ "generated": "2026-10-18T12:10:24.994Z",
+ "source": "OpenStreetMap-Mitwirkende (ODbL)",
+ "parts": [
+  {
+   "file": "wildschutz-0.geojson",
+   "w": 6.64488,
+   "s": 46.11168,
+   "e": 6.68027,
+   "n": 46.13785,
+   "count": 1
+  },
+  {
+   "file": "wildschutz-1.geojson",
+   "w": 7.52451,
+   "s": 46.84925,
+   "e": 8.70005,
+   "n": 47.51966,
+   "count": 11
+  },
+  {
+   "file": "wildschutz-2.geojson",
+   "w": 9.11388,
+   "s": 46.52329,
+   "e": 10.9971,
+   "n": 48.31554,
+   "count": 226
+  },
+  {
+   "file": "wildschutz-3.geojson",
+   "w": 10.98949,
+   "s": 46.66829,
+   "e": 13.00191,
+   "n": 48.22788,
+   "count": 547
+  },
+  {
+   "file": "wildschutz-4.geojson",
+   "w": 13.00567,
+   "s": 47.28006,
+   "e": 14.07449,
+   "n": 47.61988,
+   "count": 13
+  },
+  {
+   "file": "wildschutz-5.geojson",
+   "w": 15.38276,
+   "s": 46.99791,
+   "e": 16.97827,
+   "n": 48.20354,
+   "count": 12
+  }
+ ]
+}
