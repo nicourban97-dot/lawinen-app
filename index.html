@@ -616,7 +616,8 @@ input[type=text], input[type=number], input[type=search], select, .datebtn input
     <a href="https://avalanche.report" target="_blank" rel="noopener">EAWS-Spiegel von avalanche.report</a>; Rückfall für Bayern, Vorarlberg und die Euregio auf deren eigene Dateien.
     Zu jedem Bericht steht ein Link zum jeweiligen Warndienst.
     Messstationen: Lawinenwarndienste Tirol, Bayern und Vorarlberg über avalanche.report und lawinen-warnung.eu, dazu die jeweils genannten Betreiber.
-    Wetter: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (Modelldaten, nicht-kommerzielle Nutzung).
+    Wetter, Neuschnee für den Powderalert und Ortssuche: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (Modelldaten und Geocoding, nicht-kommerzielle Nutzung).
+    Höhenlinien: berechnet im Browser aus den Terrain Tiles mit <a href="https://github.com/onthegomap/maplibre-contour" target="_blank" rel="noopener">maplibre-contour</a>, Schrift von MapLibre.
     Karten: OpenTopoMap und OpenStreetMap-Mitwirkende, Satellitenbild Sentinel-2 cloudless von EOX (enthält veränderte Copernicus-Sentinel-Daten 2020).
     Gelände: Terrain Tiles (AWS Open Data). Teilgebiete: EAWS. Skitouren und Wildschutzgebiete: © OpenStreetMap-Mitwirkende (ODbL).
     Lawinenereignisse: <a href="https://lawis.at/incident/" target="_blank" rel="noopener">LAWIS</a> (Lawinenwarndienste Österreichs, Bayern und Südtirol; LAWIS, Universität Wien), täglich aktualisiert während der Saison.</p>
@@ -3311,7 +3312,7 @@ function goPage(name) {
 // a sheet is open; on the tab bar it always works, which is the way to swipe away from the map page.
 function swipeBlocked(target) {
   if (target.closest("nav.tabbar")) return false;
-  if (!$("#sheet").hidden || $("#peek") && !$("#peek").hidden) return true;
+  if (!$("#sheet").hidden) return true;
   if (target.closest(".maplibregl-map, #page-karte, input, select, textarea, [contenteditable]")) return true;
   for (let n = target; n && n !== document.body; n = n.parentElement) {
     const ox = getComputedStyle(n).overflowX;
