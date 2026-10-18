@@ -87,7 +87,8 @@ header.top h1 { font: 700 28px/1 var(--font-display); margin: 0; letter-spacing:
 .icon-btn { border: 0; background: transparent; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 9px; cursor: pointer; color: var(--fg); }
 .icon-btn svg { width: 22px; height: 22px; }
 main { position: relative; overflow: hidden; }
-.page { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.page { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; background: var(--bg); }
+#page-karte { touch-action: auto; } /* the map needs every gesture; pan-y here would also limit it */
 .page-inner { max-width: 760px; margin: 0 auto; padding: 14px max(16px, env(safe-area-inset-right, 0px)) 28px max(16px, env(safe-area-inset-left, 0px)); display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 nav.tabbar { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--surface); border-top: 1px solid var(--line);
   padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
@@ -629,7 +630,7 @@ input[type=text], input[type=number], input[type=search], select, .datebtn input
 <script src="https://unpkg.com/maplibre-contour@0.1.0/dist/index.min.js"></script>
 <script>
 "use strict";
-const VERSION = "0.9";
+const VERSION = "0.9.1";
 const LEVELS = { no_snow: 0, no_rating: 0, low: 1, moderate: 2, considerable: 3, high: 4, very_high: 5 };
 const LEVEL_NAME = ["keine Angabe", "gering", "mäßig", "erheblich", "groß", "sehr groß"];
 const PROBLEM = {
@@ -789,6 +790,11 @@ function swipePage(pages, current, dx, dy) {
   if (Math.abs(dx) < 60 || Math.abs(dx) <= 2 * Math.abs(dy)) return null;
   const i = pages.indexOf(current) + (dx < 0 ? 1 : -1);
   return i >= 0 && i < pages.length ? pages[i] : null;
+}
+// On release a dragged page goes over when it moved a quarter of the width, or 30 px with a flick of 0.3 px/ms.
+function swipeCommit(dx, ms, width) {
+  const d = Math.abs(dx);
+  return d >= width / 4 || (d >= 30 && d / Math.max(ms, 1) >= 0.3);
 }
 // Highest new snow per area in the chosen period, only areas at or above the threshold, most snow first.
 function powderList(points, threshold, period) {
@@ -3328,18 +3334,55 @@ function swipeBlocked(target) {
   }
   return false;
 }
+// The page follows the finger and the neighbouring page slides in beside it; on release both glide to the end
+// or back. The direction is fixed after 8 px: mostly vertical means scrolling and the gesture is dropped.
+const SWIPE_MS = 220;
 function initSwipe() {
-  let start = null;
+  const pages = Object.keys(PAGES), pageEl = n => $("#page-" + n);
+  let g = null, busy = false;
+  const place = (node, x, anim) => {
+    node.style.transition = anim ? `transform ${SWIPE_MS}ms cubic-bezier(.2,.7,.3,1)` : "none";
+    node.style.transform = x ? `translate3d(${x}px,0,0)` : "";
+  };
+  const clear = node => { node.style.transition = ""; node.style.transform = ""; node.style.zIndex = ""; };
   document.addEventListener("touchstart", e => {
-    start = e.touches.length === 1 && !swipeBlocked(e.target) ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
+    g = !busy && e.touches.length === 1 && !swipeBlocked(e.target)
+      ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: performance.now(), axis: null, dx: 0, next: null, dir: 0 } : null;
   }, { passive: true });
-  document.addEventListener("touchend", e => {
-    if (!start || !e.changedTouches.length) return;
-    const t = e.changedTouches[0], next = swipePage(Object.keys(PAGES), currentPage, t.clientX - start.x, t.clientY - start.y);
-    start = null;
-    if (next) goPage(next);
+  document.addEventListener("touchmove", e => {
+    if (!g) return;
+    const t = e.touches[0], dx = t.clientX - g.x, dy = t.clientY - g.y;
+    if (!g.axis) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      if (Math.abs(dy) >= Math.abs(dx)) { g = null; return; }
+      g.axis = "x"; g.t = performance.now(); g.x = t.clientX; return;
+    }
+    const dir = dx < 0 ? 1 : -1, w = innerWidth;
+    if (dir !== g.dir) {
+      if (g.next) { const old = pageEl(g.next); clear(old); old.hidden = true; }
+      g.dir = dir; g.next = swipePage(pages, currentPage, -dir * 100, 0);
+      if (g.next) { const p = pageEl(g.next); p.hidden = false; p.style.zIndex = "1"; }
+    }
+    g.dx = g.next ? dx : dx / 3; // at the first and last page it only gives way a little
+    place(pageEl(currentPage), g.dx, false);
+    if (g.next) place(pageEl(g.next), g.dx + dir * w, false);
   }, { passive: true });
-  document.addEventListener("touchcancel", () => { start = null; }, { passive: true });
+  const release = commitAllowed => {
+    if (!g || g.axis !== "x") { g = null; return; }
+    const s = g; g = null; busy = true;
+    const w = innerWidth, cur = pageEl(currentPage), peer = s.next ? pageEl(s.next) : null;
+    const go = commitAllowed && peer && swipeCommit(s.dx, performance.now() - s.t, w);
+    place(cur, go ? -s.dir * w : 0, true);
+    if (peer) place(peer, go ? 0 : s.dir * w, true);
+    setTimeout(() => {
+      clear(cur);
+      if (peer) { clear(peer); if (!go) peer.hidden = true; }
+      if (go) goPage(s.next);
+      busy = false;
+    }, SWIPE_MS + 20);
+  };
+  document.addEventListener("touchend", () => release(true), { passive: true });
+  document.addEventListener("touchcancel", () => release(false), { passive: true });
 }
 function setTourView(v) {
   tourView = v;

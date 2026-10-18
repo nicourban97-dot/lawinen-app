@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const m = html.match(/\/\/ --- pure:start ---([\s\S]*?)\/\/ --- pure:end ---/);
 if (!m) throw new Error("pure block missing in index.html");
-const P = new Function(m[1] + "; return { tourMinutes, fmtDuration, swipePage, powderList, searchTours, boxAround };")();
+const P = new Function(m[1] + "; return { tourMinutes, fmtDuration, swipePage, powderList, searchTours, boxAround, swipeCommit };")();
 
 test("Dauer nach Alpenvereinsregel", () => {
   assert.equal(P.tourMinutes(3951, 972), 224);     // h=3.24, w=0.988 -> 3.73 h
@@ -41,4 +41,10 @@ test("Tourensuche", () => {
 });
 test("Rechteck um einen Punkt im Format von loadParts", () => {
   assert.deepEqual(P.boxAround(6.9, 45.9, 0.15, 0.1), [[6.75, 45.8], [7.050000000000001, 46]]);
+});test("Wisch wird ausgeführt nach Weg oder Tempo", () => {
+  assert.equal(P.swipeCommit(-100, 600, 375), true);   // mehr als ein Viertel der Breite, langsam
+  assert.equal(P.swipeCommit(90, 600, 375), false);    // knapp unter einem Viertel, langsam: zurück
+  assert.equal(P.swipeCommit(-40, 100, 375), true);    // kurzer schneller Wisch (0,4 px/ms)
+  assert.equal(P.swipeCommit(-20, 30, 375), false);    // zu kurz, auch wenn schnell
+  assert.equal(P.swipeCommit(0, 0, 375), false);
 });
