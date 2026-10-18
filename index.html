@@ -240,7 +240,8 @@ button.badge { cursor: pointer; font: inherit; }
   max-height: min(62vh, 520px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .qchips { display: flex; flex-wrap: wrap; gap: 6px; }
 .msearch-btn { display: grid; place-items: center; padding: 8px 10px; }
-#m-search-q { width: 100%; font-size: 16px; }
+#m-search-q, #wx-q { width: 100%; font-size: 16px; }
+.wxsearch { display: grid; gap: 4px; margin-bottom: 10px; }
 .sresults { display: grid; gap: 4px; }
 .sresults h3 { margin: 8px 0 2px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .sresults button { text-align: left; border: 0; background: transparent; color: var(--fg); padding: 8px 6px; border-radius: 8px; font: inherit; cursor: pointer; }
@@ -565,6 +566,10 @@ input[type=text], input[type=number], input[type=search], select, .datebtn input
     </section>
     <section class="page" id="page-wetter" aria-label="Wetter" hidden>
       <div class="page-inner">
+        <div class="wxsearch" role="search">
+          <input type="search" id="wx-q" placeholder="Ort suchen, z. B. Sölden" autocomplete="off" enterkeyhint="search" aria-label="Ort für das Wetter suchen">
+          <div id="wx-res" class="sresults" aria-live="polite"></div>
+        </div>
         <label class="region-pick">Ort<select id="wx-place" aria-label="Ort für die Vorhersage"></select></label>
         <div id="wx-body"><p class="status">Lade Vorhersage …</p></div>
       </div>
@@ -1730,14 +1735,34 @@ function wxPlaces() {
   for (const a of AREAS) a.points.forEach((p, i) => out.push({ key: `a:${a.key}:${i}`, label: `${a.name}: ${p.label}, ${p.elev} m`, lat: p.lat, lon: p.lon, elev: p.elev, group: "Gebiete" }));
   for (const t of state.tours) if (t.lat != null) out.push({ key: `t:${t.id}`, label: `${t.name}, Gipfel ${t.top} m`, lat: t.lat, lon: t.lon, elev: t.top, group: "Meine Touren" });
   out.push({ key: "pos", label: "Mein Standort", lat: state.pos ? state.pos.lat : null, lon: state.pos ? state.pos.lon : null, elev: null, group: "Standort" });
+  for (const s of store.get("lawinenapp.wxsearch.v1", [])) out.push({ ...s, group: "Zuletzt gesucht" });
   return out;
+}
+// Place search on the weather page; chosen places are kept as the five most recent.
+let wxSearchTimer = null, wxSearchToken = 0;
+async function runWxSearch() {
+  const q = $("#wx-q").value, box = $("#wx-res"), token = ++wxSearchToken;
+  if (q.trim().length < 2) { put(box); return; }
+  let hits;
+  try { hits = await geocode(q); } catch (e) { if (token === wxSearchToken) put(box, el("p", { class: "status", text: "Ortssuche nicht erreichbar." })); return; }
+  if (token !== wxSearchToken) return;
+  put(box, hits.length ? hits.slice(0, 6).map(h => el("button", { type: "button", onclick: () => pickWxPlace(h) }, h.name,
+    el("small", { text: [h.admin, h.country, h.elev != null ? `${Math.round(h.elev)} m` : ""].filter(Boolean).join(", ") }))) : el("p", { class: "status", text: "Nichts gefunden." }));
+}
+function pickWxPlace(h) {
+  const key = `g:${h.lat.toFixed(3)},${h.lon.toFixed(3)}`;
+  const entry = { key, label: `${h.name}${h.admin ? ` (${h.admin})` : ""}${h.elev != null ? `, ${Math.round(h.elev)} m` : ""}`, lat: h.lat, lon: h.lon, elev: h.elev };
+  store.set("lawinenapp.wxsearch.v1", [entry, ...store.get("lawinenapp.wxsearch.v1", []).filter(s => s.key !== key)].slice(0, 5));
+  state.wxPlace = key; store.set("lawinenapp.wxplace.v1", key); state.wxDay = null;
+  $("#wx-q").value = ""; put($("#wx-res"));
+  renderWeather();
 }
 let wxDirty = true;
 async function renderWeather() {
   if (currentPage !== "wetter") { wxDirty = true; return; }
   wxDirty = false;
   const places = wxPlaces(), sel = $("#wx-place");
-  put(sel, ["Standort", "Meine Touren", "Gebiete"].map(g => {
+  put(sel, ["Standort", "Zuletzt gesucht", "Meine Touren", "Gebiete"].map(g => {
     const items = places.filter(p => p.group === g);
     return items.length ? el("optgroup", { label: g }, items.map(p => el("option", { value: p.key, text: p.label }))) : null;
   }));
@@ -3550,6 +3575,8 @@ $("#sheet-bg").addEventListener("click", () => closeSheet());
 $("#btn-settings").addEventListener("click", () => openSheet("Einstellungen", $("#settings-src"), document.body));
 $("#m-layers").addEventListener("click", () => toggleLayersPanel());
 $("#m-search-btn").addEventListener("click", () => toggleSearch());
+$("#wx-q").addEventListener("input", () => { clearTimeout(wxSearchTimer); wxSearchTimer = setTimeout(runWxSearch, 300); });
+$("#wx-q").addEventListener("keydown", e => { if (e.key === "Enter") { clearTimeout(wxSearchTimer); runWxSearch(); } });
 $("#m-search-q").addEventListener("input", onSearchInput);
 $("#m-search-q").addEventListener("keydown", e => { if (e.key === "Enter") { clearTimeout(searchTimer); runMapSearch(); } if (e.key === "Escape") toggleSearch(false); });
 $("#m-more").append($("#m-panel")); $("#m-panel").hidden = false;
