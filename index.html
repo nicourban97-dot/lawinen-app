@@ -138,6 +138,13 @@ details > summary { cursor: pointer; color: var(--accent); font-weight: 700; }
 #areas > h2 { margin-top: 2px; }
 .powder { background: var(--powder); border: 1px solid var(--powder-line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 8px; }
 .powder .area { display: grid; gap: 6px; }
+.powder .prow { display: grid; grid-template-columns: 34px 1fr auto auto; gap: 10px; align-items: center; }
+.powder .prow .lv { height: 30px; border-radius: 8px; display: grid; place-items: center; font: 700 18px/1 var(--font-display); color: #111; }
+.powder .prow .lv.l0 { background: var(--l0); color: var(--fg); } .powder .prow .lv.l1 { background: var(--l1); } .powder .prow .lv.l2 { background: var(--l2); }
+.powder .prow .lv.l3 { background: var(--l3); } .powder .prow .lv.l4 { background: var(--l4); color: #fff; } .powder .prow .lv.l5 { background: var(--l5); color: #fff; }
+.powder .prow .cm { font-weight: 700; color: var(--powder-line); }
+.powder .prow .btn { padding: 6px 12px; min-height: 0; }
+label.check { display: flex; align-items: center; gap: 10px; }
 
 /* Region sheet / bulletin */
 .region-head { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; align-items: center; }
@@ -558,7 +565,12 @@ input[type=text], input[type=number], input[type=search], select, .datebtn input
 
 <div id="settings-src" hidden>
   <form class="add" id="settings">
-    <label>Powderalert ab Neuschnee (cm in 24 h)<input type="number" id="s-thr" min="5" max="100" step="5"></label>
+    <label class="check"><input type="checkbox" id="s-powder"> Powderalert: zeigen, wo frischer Pulver liegt</label>
+    <label>Ab Neuschnee (cm)<input type="number" id="s-thr" min="5" max="100" step="5"></label>
+    <label>Zeitraum<select id="s-period">
+      <option value="past24">letzte 24 h</option>
+      <option value="past72">letzte 3 Tage</option>
+      <option value="next24">nächste 24 h</option></select></label>
     <label>Gruppe, für das Auslöserisiko<select id="s-group">
       <option value="none">nicht berücksichtigen (vorsichtig)</option>
       <option value="small">2 bis 4 Personen</option>
@@ -778,6 +790,9 @@ const state = {
   tourWx: new Map(),    // `${tourId}|${date}` -> promise of weather data
   tours: migrateTours(store.get("lawinenapp.tours.v1", EXAMPLE_TOURS)),
   threshold: store.get("lawinenapp.threshold.v1", 20),
+  powder: Object.assign({ on: true, period: "past24" }, store.get("lawinenapp.powder.v1", {})),
+  powderPts: undefined, // undefined = not loaded, null = failed, else one point per micro-region
+  powderDate: null, powderLoading: false,
   group: store.get("lawinenapp.group.v1", "none"),
   wxPlace: store.get("lawinenapp.wxplace.v1", "a:bayern:0"),
   favs: store.get("lawinenapp.favs.v1", DEFAULT_FAVS),
@@ -1248,20 +1263,92 @@ function renderTours() {
   if (!state.tours.length) box.append(el("p", { class: "status", text: "Noch keine Touren gespeichert." }));
   for (const t of state.tours) box.append(tourNode(t, true));
 }
+// ---------- Powderalert: new snow across the Alps, one point per micro-region ----------
+const POWDER_PERIODS = { past24: "in den letzten 24 h", past72: "in den letzten 3 Tagen", next24: "in den nächsten 24 h" };
+const POWDER_ELEV = 2000, POWDER_CELL = 0.4;
+async function loadPowder(date) {
+  const today = ymd(new Date()), hour = new Date().getHours();
+  const key = `lawinenapp.powder.${date}${date === today ? "." + hour : ""}`;
+  try { const c = JSON.parse(sessionStorage.getItem(key) || "null"); if (c) return c; } catch (e) { /* no session storage */ }
+  await loadRegionShapes();
+  const pts = shapesFor(date).map(f => {
+    const id = f.properties.id, area = regionArea(id);
+    if (!area) return null;
+    const b = bboxOf(f.geometry);
+    return { id, area, lat: +((b[0][1] + b[1][1]) / 2).toFixed(4), lon: +((b[0][0] + b[1][0]) / 2).toFixed(4) };
+  }).filter(Boolean);
+  if (!pts.length) return null;
+  // Open-Meteo counts every location as a call: micro-regions share one point per cell of POWDER_CELL degrees.
+  const cells = new Map();
+  for (const p of pts) {
+    const k = `${Math.round(p.lat / POWDER_CELL)}|${Math.round(p.lon / POWDER_CELL)}`;
+    if (!cells.has(k)) cells.set(k, { members: [] });
+    cells.get(k).members.push(p);
+  }
+  const qpts = [...cells.values()].map(c => ({ members: c.members,
+    lat: +(c.members.reduce((s, p) => s + p.lat, 0) / c.members.length).toFixed(3),
+    lon: +(c.members.reduce((s, p) => s + p.lon, 0) / c.members.length).toFixed(3) }));
+  const ref = (date === today ? new Date() : new Date(date + "T08:00:00")).getTime();
+  for (let i = 0; i < qpts.length; i += 100) {
+    const part = qpts.slice(i, i + 100);
+    const q = `latitude=${part.map(p => p.lat).join(",")}&longitude=${part.map(p => p.lon).join(",")}&elevation=${part.map(() => POWDER_ELEV).join(",")}&hourly=snowfall&timezone=Europe%2FBerlin`;
+    const res = await getJSON(`${weatherBase(date)}?${q}&start_date=${addDays(date, -3)}&end_date=${addDays(date, 1)}`);
+    const arr = Array.isArray(res) ? res : [res];
+    part.forEach((p, k) => {
+      const h = arr[k] && arr[k].hourly; p.past24 = 0; p.past72 = 0; p.next24 = 0;
+      if (!h) return;
+      h.time.forEach((ts, j) => {
+        const dh = (new Date(ts).getTime() - ref) / 36e5, s = h.snowfall[j] || 0;
+        if (dh > -24 && dh <= 0) p.past24 += s;
+        if (dh > -72 && dh <= 0) p.past72 += s;
+        if (dh > 0 && dh <= 24) p.next24 += s;
+      });
+      for (const m of p.members) Object.assign(m, { past24: p.past24, past72: p.past72, next24: p.next24 });
+    });
+  }
+  try { sessionStorage.setItem(key, JSON.stringify(pts)); } catch (e) { /* full or blocked */ }
+  return pts;
+}
+// Loads after the bulletins and the first render, once per date; a failed load is retried on the next call.
+async function startPowder() {
+  const date = state.date;
+  if (!state.powder.on || state.powderDate === date && (state.powderPts || state.powderLoading)) { renderPowder(); return; }
+  state.powderDate = date; state.powderPts = undefined; state.powderLoading = true;
+  renderPowder();
+  const pts = await loadPowder(date).catch(() => null);
+  if (date !== state.date) return;
+  state.powderPts = pts; state.powderLoading = false;
+  renderPowder();
+  if (typeof refreshPowderLayer === "function") refreshPowderLayer();
+}
+function powderSettingsSync() {
+  $("#s-thr").disabled = !state.powder.on; $("#s-period").disabled = !state.powder.on;
+}
+function powderChanged() {
+  store.set("lawinenapp.powder.v1", state.powder);
+  powderSettingsSync();
+  if (state.powder.on) startPowder(); else renderPowder();
+  if (typeof refreshPowderLayer === "function") refreshPowderLayer();
+}
 function renderPowder() {
   const box = $("#powder");
-  const alerts = AREAS.filter(a => state.favs.includes(a.key)).map(a => ({ a, sn: snowFor(a), s: areaSummary(a) })).filter(x => x.sn && (x.sn.past >= state.threshold || x.sn.next >= state.threshold));
-  if (!alerts.length) { box.hidden = true; put(box); return; }
+  if (!state.powder.on) { box.hidden = true; put(box); return; }
   box.hidden = false; box.className = "powder";
-  put(box, el("h2", { text: "Powderalert" }), alerts.map(({ a, sn, s }) => {
-    const lvl = s.level, allStop = s.items.length && s.items.every(i => i.level >= 4);
-    return el("div", { class: "area" },
-      el("div", {}, el("b", { text: a.name }), `: ${num(sn.past)} cm in den letzten 24 h, ${num(sn.next)} cm in den nächsten 24 h.`),
-      lvl == null ? el("div", { class: "status", text: "Kein Lagebericht, deshalb keine Vorschläge." })
-        : allStop ? el("div", { class: "note stop", text: `Stufe ${lvl} im ganzen Gebiet: keine Tourenvorschläge. Der Neuschnee erhöht die Gefahr zusätzlich.` })
-        : el("div", { class: "row" }, s.items.some(i => i.level >= 3) ? el("span", { class: "badge warn", text: "Teils Stufe 3 oder höher" }) : null,
-            el("button", { class: "btn ghost", type: "button", onclick: () => showFinderFor(a.key), text: `Routen in ${a.name}` })));
-  }));
+  const when = POWDER_PERIODS[state.powder.period] || POWDER_PERIODS.past24, head = el("h2", { text: "Powderalert" });
+  if (state.powderLoading || state.powderDate !== state.date) { put(box, head, el("p", { class: "status", text: "Neuschnee wird geladen …" })); return; }
+  if (!state.powderPts) { put(box, head, el("p", { class: "status", text: "Neuschnee gerade nicht abrufbar." })); return; }
+  const list = powderList(state.powderPts, state.threshold, state.powder.period);
+  if (!list.length) { put(box, head, el("p", { class: "status", text: `Nirgends über ${state.threshold} cm ${when}.` })); return; }
+  const row = ({ area, cm }) => {
+    const a = AREAS.find(x => x.key === area), lvl = a ? areaSummary(a).level : null;
+    return el("div", { class: "prow" },
+      el("span", { class: "lv " + lvlClass(lvl), text: lvl ?? "–", title: lvl != null ? `Lawinenstufe ${lvl}` : "Kein Lagebericht" }),
+      el("b", { text: areaName(area) }), el("span", { class: "cm", text: `${cm} cm` }),
+      el("button", { class: "btn ghost", type: "button", onclick: () => showFinderFor(area), text: "Touren" }));
+  };
+  put(box, head, el("p", { class: "status", text: `Neuschnee ${when}, ab ${state.threshold} cm, gemessen auf ${POWDER_ELEV} m. Neuschnee erhöht die Lawinengefahr: Stufe beachten.` }),
+    list.slice(0, 8).map(row),
+    list.length > 8 ? el("details", {}, el("summary", { text: `+ ${list.length - 8} weitere` }), list.slice(8).map(row)) : null);
 }
 // ---------- rendering: tour detail ----------
 const WMO = c => c == null ? "" : c === 0 ? "klar" : c <= 2 ? "heiter" : c === 3 ? "bedeckt" : c <= 48 ? "Nebel" : c <= 57 ? "Niesel"
@@ -3072,6 +3159,7 @@ async function load() {
   clearSelection(); mapState.tourSelId = null;
   state.weather = w.status === "fulfilled" ? w.value : null;
   renderAll();
+  startPowder();
 }
 function setDate(d) {
   state.date = d; $("#date").value = d; finder.raw = false; finder.shown = 20;
@@ -3142,7 +3230,10 @@ $("#add-form").addEventListener("submit", e => {
   resetForm(); saveTours();
 });
 $("#s-thr").value = state.threshold;
-$("#s-thr").addEventListener("change", e => { state.threshold = Number(e.target.value) || 20; store.set("lawinenapp.threshold.v1", state.threshold); renderPowder(); });
+$("#s-thr").addEventListener("change", e => { state.threshold = Number(e.target.value) || 20; store.set("lawinenapp.threshold.v1", state.threshold); powderChanged(); });
+$("#s-powder").checked = state.powder.on; $("#s-period").value = state.powder.period; powderSettingsSync();
+$("#s-powder").addEventListener("change", e => { state.powder.on = e.target.checked; powderChanged(); });
+$("#s-period").addEventListener("change", e => { state.powder.period = e.target.value; powderChanged(); });
 $("#settings").addEventListener("submit", e => e.preventDefault());
 $("#s-group").value = state.group;
 $("#s-group").addEventListener("change", e => {
