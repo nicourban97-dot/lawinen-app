@@ -567,22 +567,22 @@ input[type=text], input[type=number], input[type=search], select, .datebtn input
   </form>
   <details class="panel" id="s-method"><summary>So rechnet die App das Auslöserisiko</summary></details>
   <div class="about">
-    <p>Lageberichte: <a href="https://www.lawinenwarndienst.bayern.de" target="_blank" rel="noopener">Lawinenwarndienst Bayern</a>,
-    <a href="https://avalanche.report" target="_blank" rel="noopener">Lawinenwarndienst Tirol (avalanche.report)</a>,
-    <a href="https://www.vorarlberg.at/lawinenbericht" target="_blank" rel="noopener">Lawinenwarndienst Vorarlberg</a>.
+    <p>Lageberichte: die Lawinenwarndienste der Alpenländer (Bayern, Österreich, Schweiz, Frankreich, Italien, Slowenien) im EAWS-Format über den
+    <a href="https://avalanche.report" target="_blank" rel="noopener">EAWS-Spiegel von avalanche.report</a>; Rückfall für Bayern, Vorarlberg und die Euregio auf deren eigene Dateien.
+    Zu jedem Bericht steht ein Link zum jeweiligen Warndienst.
     Messstationen: Lawinenwarndienste Tirol, Bayern und Vorarlberg über avalanche.report und lawinen-warnung.eu, dazu die jeweils genannten Betreiber.
     Wetter: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (Modelldaten, nicht-kommerzielle Nutzung).
     Karten: OpenTopoMap und OpenStreetMap-Mitwirkende, Satellitenbild Sentinel-2 cloudless von EOX (enthält veränderte Copernicus-Sentinel-Daten 2020).
     Gelände: Terrain Tiles (AWS Open Data). Teilgebiete: EAWS. Skitouren und Wildschutzgebiete: © OpenStreetMap-Mitwirkende (ODbL).
     Lawinenereignisse: <a href="https://lawis.at/incident/" target="_blank" rel="noopener">LAWIS</a> (Lawinenwarndienste Österreichs, Bayern und Südtirol; LAWIS, Universität Wien), täglich aktualisiert während der Saison.</p>
-    <p>Diese App ist eine Entscheidungshilfe. Sie ersetzt nicht den vollständigen Lagebericht und nicht die Beurteilung im Gelände. Version 0.7.1.</p>
+    <p>Diese App ist eine Entscheidungshilfe. Sie ersetzt nicht den vollständigen Lagebericht und nicht die Beurteilung im Gelände. Version 0.8.</p>
   </div>
 </div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script>
 "use strict";
-const VERSION = "0.7.1";
+const VERSION = "0.8";
 const LEVELS = { no_snow: 0, no_rating: 0, low: 1, moderate: 2, considerable: 3, high: 4, very_high: 5 };
 const LEVEL_NAME = ["keine Angabe", "gering", "mäßig", "erheblich", "groß", "sehr groß"];
 const PROBLEM = {
@@ -1899,6 +1899,13 @@ async function updateAcc() {
   } catch (e) { showMapMsg("Die Lawinenereignisse konnten nicht geladen werden."); }
   renderLegend();
 }
+// LAWIS covers Austria, Bavaria and South Tyrol; elsewhere an empty map would wrongly look like "no accidents".
+const ACC_AREAS = ["bayern", "vorarlberg", "tirol", "salzburg", "kaernten", "steiermark", "ooenoe", "suedtirol"];
+function accMissingHere() {
+  const m = mapState.map; if (!m || !mapState.ready) return false;
+  const c = m.getCenter(), id = regionAt(c.lng, c.lat, shapesFor(state.date));
+  return !!id && !ACC_AREAS.includes(regionArea(id));
+}
 function accFacts(p) {
   const persons = [p.dead ? `${p.dead} tot` : null, p.inj ? `${p.inj} verletzt` : null, p.un ? `${p.un} unverletzt` : null].filter(Boolean).join(", ");
   const buried = [p.bur ? `${p.bur} ganz verschüttet` : null, p.par ? `${p.par} teilverschüttet` : null, p.sw ? `${p.sw} mitgerissen` : null].filter(Boolean).join(", ");
@@ -2323,6 +2330,7 @@ function initMap() {
   map.on("moveend", () => {
     clearTimeout(partTimer);
     partTimer = setTimeout(() => {
+      renderLegend();
       if (map.getZoom() < 8.5) return;
       for (const key of ["routes", "wild"]) if (mapState.filter[key]) loadParts(key, mapBox(map)).catch(() => {});
     }, 250);
@@ -2568,7 +2576,8 @@ function renderLegend() {
   if (mapState.route || mapState.tourSelId) parts.push(el("b", { text: "Gewählte Spur" }), [3, 2, 1].map(k => row(el("span", { class: "sw line-sw", style: `background:${RISK_COLORS[k]}` }), `Abschnitt ${RISK_NAME[k]}`)));
   if (f.acc) parts.push(el("b", { text: "Lawinenereignisse" }), Object.values(ACC_SEV).map(([c, label]) => row(el("span", { class: "sw acc-sw", style: `background:${c}` }), label)),
     row(el("span", { class: "sw acc-sw", style: "background:rgba(74,44,64,.78);width:14px;height:14px" }), "mehrere, antippen"),
-    mapState.accLabel ? el("div", { class: "lnote", text: mapState.accLabel }) : null);
+    mapState.accLabel ? el("div", { class: "lnote", text: mapState.accLabel }) : null,
+    accMissingHere() ? el("div", { class: "lnote", text: "Für dieses Gebiet gibt es keine Unfalldaten. LAWIS deckt Österreich, Bayern und Südtirol ab." }) : null);
   if (f.slope && (region || z >= SLOPE_MINZOOM)) parts.push(el("b", { text: "Hangneigung" }),
     SLOPE_CLASSES.map((c, k) => f.slopes[k] ? row(box(`rgb(${c.color.join(",")})`), c.label) : null));
   if (f.snow) {
