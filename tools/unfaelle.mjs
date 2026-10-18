@@ -4,7 +4,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 
 const API = "https://lawis.at/lawis_api/v2_3/incident/";
-const BBOX = { s: 46.6, w: 9.5, n: 47.85, e: 13.1 }; // same area as the OSM data
+const BBOX = { s: 43.7, w: 5.0, n: 48.4, e: 16.5 }; // the Alps, same area as the OSM data
 const ASPECT = { 1: "N", 2: "NE", 3: "E", 4: "SE", 5: "S", 6: "SW", 7: "W", 8: "NW" };
 const UA = { "User-Agent": "lawinen-app (github.com/nicourban97-dot/lawinen-app)" };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
