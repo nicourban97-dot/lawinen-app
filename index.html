@@ -120,7 +120,7 @@ details > summary { cursor: pointer; color: var(--accent); font-weight: 700; }
 .area-row .nm { font: 700 21px/1.1 var(--font-display); }
 .area-row .sub { color: var(--muted); font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .area-row .chev { color: var(--muted); font-size: 22px; }
-.powder { background: var(--powder); border: 1px solid var(--powder-line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 8px; }
+.area-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 6px; align-items: stretch; } border: 1px solid var(--powder-line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 8px; }
 .powder .area { display: grid; gap: 6px; }
 
 /* Region sheet / bulletin */
@@ -500,13 +500,31 @@ const DANGER_PATTERN = {
 const ASPECTS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
 const ASPECT_DE = { N: "N", NE: "NO", E: "O", SE: "SO", S: "S", SW: "SW", W: "W", NW: "NW" };
 
-const PROVIDERS = [
-  { id: "BY", name: "Bayern", url: d => `https://static.lawinen-warnung.eu/bulletins/${d}/${d}_DE-BY_de_CAAMLv6.json`,
-    page: () => "https://www.lawinenwarndienst.bayern.de" },
-  { id: "VB", name: "Vorarlberg", url: d => `https://static.lawinen-warnung.eu/bulletins/${d}/${d}_AT-08_de_CAAMLv6.json`,
-    page: () => "https://www.vorarlberg.at/lawinenbericht" },
-  { id: "TI", name: "Tirol", url: d => `https://static.avalanche.report/bulletins/${d}/${d}_EUREGIO_de_CAAMLv6.json`,
-    page: d => `https://avalanche.report/bulletin/${d}` }
+// The Alps' warning services. All bulletins come from the EAWS mirror of avalanche.report (CAAMLv6, German where
+// offered); for Bavaria, Vorarlberg and the Euregio the services' own files are the fallback.
+const EAWS_BASE = "https://static.avalanche.report/eaws_bulletins";
+const EAWS_REGIONS = [
+  { code: "DE-BY", name: "Bayern", page: () => "https://www.lawinenwarndienst.bayern.de",
+    fallback: d => `https://static.lawinen-warnung.eu/bulletins/${d}/${d}_DE-BY_de_CAAMLv6.json` },
+  { code: "AT-08", name: "Vorarlberg", page: () => "https://www.vorarlberg.at/lawinenbericht",
+    fallback: d => `https://static.lawinen-warnung.eu/bulletins/${d}/${d}_AT-08_de_CAAMLv6.json` },
+  { code: "AT-07", name: "Tirol", page: d => `https://avalanche.report/bulletin/${d}`,
+    fallback: d => `https://static.avalanche.report/bulletins/${d}/${d}_EUREGIO_de_CAAMLv6.json` },
+  { code: "AT-05", name: "Salzburg", page: () => "https://lawine.salzburg.at" },
+  { code: "AT-02", name: "Kärnten", page: () => "https://lawinenwarndienst.ktn.gv.at" },
+  { code: "AT-06", name: "Steiermark", page: () => "https://www.lawine-steiermark.at" },
+  { code: "AT-04", name: "Oberösterreich", page: () => "https://www.land-oberoesterreich.gv.at/lawinenwarndienst.htm" },
+  { code: "AT-03", name: "Niederösterreich", page: () => "https://www.lawinenwarndienst-niederoesterreich.at" },
+  { code: "IT-32-BZ", name: "Südtirol", page: d => `https://avalanche.report/bulletin/${d}` },
+  { code: "IT-32-TN", name: "Trentino", page: d => `https://avalanche.report/bulletin/${d}` },
+  { code: "CH", name: "Schweiz", page: () => "https://www.slf.ch/de/lawinenbulletin-und-schneesituation/" },
+  { code: "FR", name: "Frankreich", lang: "fr", page: () => "https://meteofrance.com/meteo-montagne" },
+  { code: "IT-21", name: "Piemont", page: () => "https://www.arpa.piemonte.it" },
+  { code: "IT-23", name: "Aostatal", page: () => "https://presidi2.regione.vda.it/str_dataview_meteo_neve" },
+  { code: "IT-25", name: "Lombardei", page: () => "https://www.arpalombardia.it" },
+  { code: "IT-34", name: "Venetien", page: () => "https://www.arpa.veneto.it" },
+  { code: "IT-36", name: "Friaul", page: () => "https://www.meteo.fvg.it" },
+  { code: "SI", name: "Slowenien", page: () => "https://meteo.arso.gov.si" }
 ];
 // Two station networks: avalanche.report (Tirol, South Tyrol, Trentino) and lawinen-warnung.eu (Bavaria, Vorarlberg, rest of Austria, Slovenia).
 // Both keep hourly snapshots during the season, file names in UTC: <YYYY-MM-DD>_<HH>-00_stations.geojson.
@@ -516,22 +534,34 @@ const STATION_SOURCES = [
 ];
 const stationChart = (plot, w) => `https://wiski.tirol.gv.at/lawine/grafiken/${w}/standard/woche/${encodeURIComponent(plot)}.png`;
 
-// Areas of the first version. Regions are the micro-regions of the warning services.
+// Areas: the warning services of the Alps, matched by micro-region ID prefix. Bavaria, Tyrol and Vorarlberg keep the
+// valleys of the first versions as quick choices (subs). Points are touring spots for weather and new snow.
+const P = (label, lat, lon, elev) => ({ label, lat, lon, elev });
 const AREAS = [
-  { key: "allgaeu", name: "Allgäu", regions: ["DE-BY-11", "DE-BY-12"],
-    points: [{ lat: 47.40, lon: 10.33, elev: 1800, label: "Oberstdorf" }, { lat: 47.48, lon: 10.10, elev: 1600, label: "Balderschwang" }] },
-  { key: "tannheim", name: "Tannheimer Tal", regions: ["AT-07-01"],
-    points: [{ lat: 47.50, lon: 10.55, elev: 1700, label: "Tannheim" }] },
-  { key: "kleinwalsertal", name: "Kleinwalsertal", regions: ["AT-08-02"],
-    points: [{ lat: 47.33, lon: 10.15, elev: 1800, label: "Mittelberg" }] },
-  { key: "lechtal", name: "Lechtal", regions: ["AT-07-07", "AT-07-08", "AT-07-02-02"],
-    points: [{ lat: 47.26, lon: 10.34, elev: 2000, label: "Holzgau" }] },
-  { key: "tirol", name: "Tirol", regions: "AT-07-*",
-    points: [{ lat: 47.13, lon: 10.27, elev: 2200, label: "Arlberg" }, { lat: 47.21, lon: 11.02, elev: 2200, label: "Kühtai" },
-             { lat: 47.10, lon: 11.30, elev: 2200, label: "Stubai" }, { lat: 47.11, lon: 11.68, elev: 2200, label: "Tux" },
-             { lat: 47.43, lon: 12.39, elev: 1700, label: "Kitzbühel" }] }
+  { key: "bayern", name: "Bayern", prefix: ["DE-BY-"], points: [P("Oberstdorf", 47.40, 10.33, 1800), P("Garmisch", 47.42, 11.05, 1800), P("Berchtesgaden", 47.60, 12.97, 1700)],
+    subs: [{ key: "allgaeu", name: "Allgäu", regions: ["DE-BY-11", "DE-BY-12"] }] },
+  { key: "vorarlberg", name: "Vorarlberg", prefix: ["AT-08-"], points: [P("Mittelberg", 47.33, 10.15, 1800), P("Lech", 47.21, 10.14, 2000), P("Montafon", 46.97, 9.92, 2000)],
+    subs: [{ key: "kleinwalsertal", name: "Kleinwalsertal", regions: ["AT-08-02"] }] },
+  { key: "tirol", name: "Tirol", prefix: ["AT-07-"], points: [P("Arlberg", 47.13, 10.27, 2200), P("Kühtai", 47.21, 11.02, 2200), P("Stubai", 47.10, 11.30, 2200),
+      P("Tux", 47.11, 11.68, 2200), P("Kitzbühel", 47.43, 12.39, 1700), P("Tannheim", 47.50, 10.55, 1700), P("Holzgau", 47.26, 10.34, 2000), P("Kals", 47.00, 12.64, 2200)],
+    subs: [{ key: "tannheim", name: "Tannheimer Tal", regions: ["AT-07-01"] }, { key: "lechtal", name: "Lechtal", regions: ["AT-07-07", "AT-07-08", "AT-07-02-02"] }] },
+  { key: "salzburg", name: "Salzburg", prefix: ["AT-05-"], points: [P("Obertauern", 47.25, 13.56, 2000), P("Gastein", 47.10, 13.13, 2000)] },
+  { key: "kaernten", name: "Kärnten", prefix: ["AT-02-"], points: [P("Heiligenblut", 47.04, 12.84, 2200), P("Nassfeld", 46.56, 13.28, 1800)] },
+  { key: "steiermark", name: "Steiermark", prefix: ["AT-06-"], points: [P("Schladming", 47.39, 13.69, 1800), P("Hochschwab", 47.62, 15.14, 1800)] },
+  { key: "ooenoe", name: "Ober- und Niederösterreich", prefix: ["AT-04-", "AT-03-"], points: [P("Gosau", 47.53, 13.53, 1700), P("Rax", 47.71, 15.73, 1600)] },
+  { key: "suedtirol", name: "Südtirol", prefix: ["IT-32-BZ-"], points: [P("Sulden", 46.52, 10.59, 2300), P("Gröden", 46.57, 11.72, 2200), P("Ahrntal", 46.98, 11.95, 2200)] },
+  { key: "trentino", name: "Trentino", prefix: ["IT-32-TN-"], points: [P("Madonna di Campiglio", 46.23, 10.83, 2000), P("Fassatal", 46.43, 11.77, 2100)] },
+  { key: "schweiz", name: "Schweiz", prefix: ["CH-"], points: [P("Davos", 46.80, 9.84, 2200), P("Engelberg", 46.82, 8.41, 2000), P("Andermatt", 46.63, 8.59, 2200), P("Zermatt", 46.02, 7.75, 2600)] },
+  { key: "frankreich", name: "Frankreich", prefix: ["FR-"], points: [P("Chamonix", 45.92, 6.87, 2200), P("Val d'Isère", 45.45, 6.98, 2300), P("La Grave", 45.05, 6.31, 2200)] },
+  { key: "piemont", name: "Piemont", prefix: ["IT-21-"], points: [P("Alagna", 45.85, 7.94, 2200)] },
+  { key: "aosta", name: "Aostatal", prefix: ["IT-23-"], points: [P("Courmayeur", 45.80, 6.97, 2100), P("Cervinia", 45.93, 7.63, 2400)] },
+  { key: "lombardei", name: "Lombardei", prefix: ["IT-25-"], points: [P("Livigno", 46.54, 10.14, 2300), P("Bormio", 46.47, 10.37, 2200)] },
+  { key: "venetien", name: "Venetien", prefix: ["IT-34-"], points: [P("Cortina", 46.54, 12.14, 2100)] },
+  { key: "friaul", name: "Friaul", prefix: ["IT-36-"], points: [P("Sella Nevea", 46.39, 13.48, 1800)] },
+  { key: "slowenien", name: "Slowenien", prefix: ["SI"], points: [P("Kranjska Gora", 46.47, 13.79, 1700)] }
 ];
-const OWN_TIROL = new Set(["AT-07-01", "AT-07-07", "AT-07-08", "AT-07-02-02"]);
+const SUBS = AREAS.flatMap(a => (a.subs || []).map(s => ({ ...s, parent: a.key })));
+const DEFAULT_FAVS = ["bayern", "vorarlberg", "tirol"];
 const STATIC_REGION_NAMES = {
   "DE-BY-11": "Allgäuer Voralpen", "DE-BY-12": "Allgäuer Alpen Mitte", "AT-07-01": "Allgäuer Alpen Ost (Tannheimer Tal)",
   "AT-08-02": "Allgäuer Alpen West (Kleinwalsertal)", "AT-07-07": "Lechtaler Alpen West", "AT-07-08": "Lechtaler Alpen Mitte",
@@ -605,7 +635,8 @@ const state = {
   tours: migrateTours(store.get("lawinenapp.tours.v1", EXAMPLE_TOURS)),
   threshold: store.get("lawinenapp.threshold.v1", 20),
   group: store.get("lawinenapp.group.v1", "none"),
-  wxPlace: store.get("lawinenapp.wxplace.v1", "a:allgaeu:0"),
+  wxPlace: store.get("lawinenapp.wxplace.v1", "a:bayern:0"),
+  favs: store.get("lawinenapp.favs.v1", DEFAULT_FAVS),
   wxDay: null,
   tourSel: store.get("lawinenapp.toursel.v1", null),
   stationSel: {},       // tourId -> station id
@@ -622,20 +653,27 @@ async function getJSON(url) {
 async function loadBulletins(date) {
   const regions = new Map(), fetched = {};
   const live = date >= ymd(new Date());
-  await Promise.all(PROVIDERS.map(async p => {
+  // German file first, then the original language, then the service's own file where there is one.
+  const sources = (p, d) => [
+    { url: `${EAWS_BASE}/${d}/${d}-${p.code}.de.json`, lang: "de" },
+    { url: `${EAWS_BASE}/${d}/${d}-${p.code}.json`, lang: null },
+    p.fallback ? { url: p.fallback(d), lang: "de" } : null].filter(Boolean);
+  await Promise.all(EAWS_REGIONS.map(async p => {
     // For today/tomorrow fall back to the two previous days, a bulletin keeps its validity until the next one.
     const tries = live ? [date, addDays(date, -1), addDays(date, -2)] : [date];
-    for (const d of tries) {
+    for (const d of tries) for (const src of sources(p, d)) {
       try {
-        const j = await getJSON(p.url(d));
-        for (const b of j.bulletins || []) for (const r of b.regions || [])
-          if (!regions.has(r.regionID) || regions.get(r.regionID).provider === p.id)
-            regions.set(r.regionID, { name: r.name, bulletin: b, provider: p.id, stale: d !== date, file: d });
-        fetched[p.id] = { date: d, ok: true };
+        const j = await getJSON(src.url);
+        if (!(j.bulletins || []).length) continue;
+        for (const b of j.bulletins) for (const r of b.regions || [])
+          // A file may also cover neighbours (Euregio); a region keeps the bulletin of its own service.
+          if (!regions.has(r.regionID) || r.regionID.startsWith(p.code))
+            regions.set(r.regionID, { name: r.name, bulletin: b, provider: p.code, lang: src.lang || p.lang || b.lang || "", stale: d !== date, file: d });
+        fetched[p.code] = { date: d, ok: true };
         return;
       } catch (e) { /* try next */ }
     }
-    fetched[p.id] = { ok: false };
+    fetched[p.code] = { ok: false };
   }));
   return { regions, fetched };
 }
@@ -733,9 +771,15 @@ async function stationHistory(st, date) {
 
 // ---------- logic ----------
 const maxLevel = b => b ? Math.max(0, ...(b.dangerRatings || []).map(r => LEVELS[r.mainValue] ?? 0)) : null;
+// key is an area ("tirol") or a valley within one ("lechtal").
+function areaMatch(key, id) {
+  const sub = SUBS.find(s => s.key === key);
+  if (sub) return sub.regions.includes(id);
+  const a = AREAS.find(x => x.key === key);
+  return !!a && a.prefix.some(p => id.startsWith(p));
+}
 function areaRegions(a) {
-  if (a.regions === "AT-07-*") return [...state.regions.keys()].filter(id => id.startsWith("AT-07-") && !OWN_TIROL.has(id)).sort();
-  return a.regions.filter(id => state.regions.has(id));
+  return [...state.regions.keys()].filter(id => areaMatch(a.key, id)).sort();
 }
 function areaSummary(a) {
   const ids = areaRegions(a);
@@ -772,9 +816,11 @@ function evaluateTour(t) {
   return { status: "go", level, notes };
 }
 function regionArea(id) {
-  for (const a of AREAS) if (Array.isArray(a.regions) && a.regions.includes(id)) return a.key;
-  return id.startsWith("AT-07-") ? "tirol" : null;
+  if (!id) return null;
+  const a = AREAS.find(x => x.prefix.some(p => id.startsWith(p)));
+  return a ? a.key : null;
 }
+const areaName = key => (AREAS.find(a => a.key === key) || SUBS.find(s => s.key === key) || {}).name || key;
 
 // ---------- release risk (Auslöserisiko) ----------
 // Follows Werner Munter's reduction method (3x3 Lawinen, chapter 10): danger potential 2^level (gering 2, mäßig 4,
@@ -940,7 +986,7 @@ const levelDot = l => el("span", { class: "dot " + lvlClass(l), text: l ?? "–"
 function bulletinDetail(regionId) {
   const r = state.regions.get(regionId);
   if (!r) return el("p", { class: "status", text: "Für dieses Teilgebiet liegt kein Lagebericht vor." });
-  const b = r.bulletin, prov = PROVIDERS.find(p => p.id === r.provider);
+  const b = r.bulletin, prov = EAWS_REGIONS.find(p => p.code === r.provider) || EAWS_REGIONS[0];
   const sec = (title, ...kids) => { const k = kids.flat().filter(Boolean); return k.length ? el("section", { class: "bsec" }, el("h4", { text: title }), k) : null; };
   const ratings = [...(b.dangerRatings || [])];
   const periods = ratings.some(x => x.validTimePeriod && x.validTimePeriod !== "all_day");
@@ -977,7 +1023,7 @@ function bulletinDetail(regionId) {
       b.validTime?.endTime ? el("span", { text: `gültig bis ${fmtTime(b.validTime.endTime)}` }) : null,
       b.unscheduled ? el("span", { class: "badge warn", text: "Aktualisierte Fassung" }) : null,
       r.stale ? el("span", { class: "badge", text: `Bericht vom ${fmtDate(r.file)}` }) : null),
-    sec("Gefahrenstufe", rates),
+    r.lang === "fr" ? el("div", { class: "note", text: "Lagebericht nur auf Französisch, so wie ihn der Warndienst veröffentlicht." }) : null,
     (b.highlights || b.avalancheActivity?.highlights) ? sec("Auf einen Blick", textBlock(b.highlights, "lead"), b.highlights !== b.avalancheActivity?.highlights ? textBlock(b.avalancheActivity?.highlights, "lead") : null) : null,
     probs.length ? sec("Lawinenprobleme", probs) : null,
     sec("Gefahrenbeurteilung", textBlock(b.avalancheActivity?.comment)),
@@ -996,17 +1042,33 @@ function snowFor(a) {
   const pts = state.weather.filter(p => p.area === a.key);
   return { past: Math.max(...pts.map(p => p.past)), next: Math.max(...pts.map(p => p.next)), pts };
 }
-function renderAreas() {
-  put($("#areas"), AREAS.map(a => {
-    const s = areaSummary(a), b = s.worst && s.worst.bulletin, sn = snowFor(a);
-    const elev = b ? (b.dangerRatings || []).map(r => `${LEVELS[r.mainValue] ?? "–"} ${elevText(r.elevation)}`).join(", ") : "";
-    const hl = b ? paras(b.highlights || (b.avalancheActivity && b.avalancheActivity.highlights) || "").join(" ") : "Kein Lagebericht für diesen Tag.";
-    return el("button", { class: "area-row", type: "button", onclick: () => openAreaSheet(a.key), "aria-label": `${a.name}, Stufe ${s.level ?? "keine Angabe"}` },
+function toggleFav(key) {
+  state.favs = state.favs.includes(key) ? state.favs.filter(k => k !== key) : AREAS.map(a => a.key).filter(k => k === key || state.favs.includes(k));
+  store.set("lawinenapp.favs.v1", state.favs);
+  renderAreas(); renderPowder(); finderFill(); renderFinder();
+}
+function areaRow(a) {
+  const s = areaSummary(a), b = s.worst && s.worst.bulletin, sn = snowFor(a), fav = state.favs.includes(a.key);
+  const elev = b ? (b.dangerRatings || []).map(r => `${LEVELS[r.mainValue] ?? "–"} ${elevText(r.elevation)}`).join(", ") : "";
+  const hl = b ? paras(b.highlights || (b.avalancheActivity && b.avalancheActivity.highlights) || "").join(" ") : "Kein Lagebericht für diesen Tag.";
+  return el("div", { class: "area-wrap" },
+    el("button", { class: "area-row", type: "button", onclick: () => openAreaSheet(a.key), "aria-label": `${a.name}, Stufe ${s.level ?? "keine Angabe"}` },
       el("span", { class: "lv " + lvlClass(s.level), text: s.level ?? "–" }),
       el("span", {}, el("span", { class: "nm", text: a.name }),
         el("span", { class: "sub" }, [elev, sn && sn.past >= 1 ? `${num(sn.past)} cm Neuschnee in 24 h` : null].filter(Boolean).join(", "), elev ? el("br") : null, hl)),
-      el("span", { class: "chev", text: "›", "aria-hidden": "true" }));
-  }));
+      el("span", { class: "chev", text: "›", "aria-hidden": "true" })),
+    el("button", { class: "star", type: "button", "aria-pressed": String(fav), "aria-label": fav ? `${a.name} aus Meine Gebiete entfernen` : `${a.name} zu Meine Gebiete`,
+      onclick: () => toggleFav(a.key), text: fav ? "★" : "☆" }));
+}
+function renderAreas() {
+  const mine = AREAS.filter(a => state.favs.includes(a.key)), rest = AREAS.filter(a => !state.favs.includes(a.key));
+  const wasOpen = $("#areas-more") && $("#areas-more").open;
+  put($("#areas"),
+    el("h2", { text: "Meine Gebiete" }),
+    mine.length ? mine.map(areaRow) : el("p", { class: "status", text: "Noch keine Gebiete gewählt. Tippe bei einem Gebiet unten auf den Stern." }),
+    el("details", { id: "areas-more", open: wasOpen || null },
+      el("summary", { text: `Weitere Gebiete der Alpen (${rest.length})` }),
+      el("div", { class: "arealist", style: "margin-top:10px" }, rest.map(areaRow))));
 }
 // ---------- rendering: tours ----------
 function tourBadge(ev) {
@@ -1043,7 +1105,7 @@ function renderTours() {
 }
 function renderPowder() {
   const box = $("#powder");
-  const alerts = AREAS.map(a => ({ a, sn: snowFor(a), s: areaSummary(a) })).filter(x => x.sn && (x.sn.past >= state.threshold || x.sn.next >= state.threshold));
+  const alerts = AREAS.filter(a => state.favs.includes(a.key)).map(a => ({ a, sn: snowFor(a), s: areaSummary(a) })).filter(x => x.sn && (x.sn.past >= state.threshold || x.sn.next >= state.threshold));
   if (!alerts.length) { box.hidden = true; put(box); return; }
   box.hidden = false; box.className = "powder";
   put(box, el("h2", { text: "Powderalert" }), alerts.map(({ a, sn, s }) => {
@@ -1376,13 +1438,14 @@ async function renderWeather() {
 
 // ---------- rendering: status ----------
 function renderStatus() {
-  const parts = PROVIDERS.map(p => {
-    const f = state.fetched[p.id];
-    if (!f || !f.ok) return `${p.name}: kein Bericht`;
-    return `${p.name}: ${fmtDate(f.date)}`;
-  });
-  const none = PROVIDERS.every(p => !(state.fetched[p.id] && state.fetched[p.id].ok));
-  put($("#status"), el("b", { text: fmtDate(state.date) }), " · Lageberichte " + parts.join(", ") +
+  const ok = EAWS_REGIONS.filter(p => state.fetched[p.code] && state.fetched[p.code].ok);
+  const missing = EAWS_REGIONS.filter(p => !ok.includes(p)).map(p => p.name);
+  const stale = ok.filter(p => state.fetched[p.code].date !== state.date).map(p => p.name);
+  const none = !ok.length;
+  put($("#status"), el("b", { text: fmtDate(state.date) }),
+    ` · Lageberichte von ${ok.length} der ${EAWS_REGIONS.length} Warndienste` +
+    (missing.length && !none ? `, ohne Bericht: ${missing.join(", ")}` : "") +
+    (stale.length ? `, vom Vortag: ${stale.join(", ")}` : "") +
     (state.weather ? "" : " · Wetter nicht geladen"),
     none ? el("div", { class: "note", style: "margin-top:8px" },
       "Für dieses Datum gibt es keine Lageberichte, die Saison beginnt etwa Ende November. Zum Ausprobieren Tage aus dem letzten Winter: ",
@@ -1392,7 +1455,8 @@ function renderStatus() {
 function fillRegionSelect() {
   const sel = $("#t-region"), cur = sel.value; sel.replaceChildren();
   const ids = new Map(Object.entries(STATIC_REGION_NAMES));
-  for (const [id, r] of state.regions) if (id.startsWith("AT-07-") && !ids.has(id)) ids.set(id, r.name);
+  // Some services publish regions without a name: use the EAWS name list, else the ID.
+  for (const [id, r] of state.regions) if (!ids.has(id)) ids.set(id, r.name || mapState.names[id] || id);
   for (const t of state.tours) if (!ids.has(t.region)) ids.set(t.region, t.region);
   for (const [id, name] of [...ids].sort((a, b) => a[1].localeCompare(b[1], "de"))) sel.append(el("option", { value: id, text: `${name} (${id})` }));
   if (cur) sel.value = cur;
@@ -1402,7 +1466,7 @@ function renderAll() { renderStatus(); renderAreas(); renderPowder(); renderTour
 // ---------- map ----------
 // Overview: EAWS micro-regions coloured by the day's highest danger level. Tap a region: topographic map with
 // slope classes computed in the browser from Terrarium elevation tiles, filtered by aspect and elevation. Optional 3D terrain.
-const REGION_FILES = ["AT-07", "AT-08", "DE-BY", "IT-32-BZ", "IT-32-TN"].map(c => `https://regions.avalanches.org/micro-regions/${c}_micro-regions.geojson.json`);
+const REGION_FILES = EAWS_REGIONS.map(p => p.code).map(c => `https://regions.avalanches.org/micro-regions/${c}_micro-regions.geojson.json`);
 const REGION_NAMES_URL = "https://regions.avalanches.org/micro-regions_names/de.json";
 const DEM_URL = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png";
 const LEVEL_COLORS = ["#c9d1d6", "#ccff66", "#ffff00", "#ff9900", "#ff0000", "#a30000"];
@@ -2331,7 +2395,7 @@ function renderMapPanel() {
 // ---------- tour suggestions from the OSM routes ----------
 // Each route carries precomputed numbers (st: length, ascent, highest point, steepest slope, aspects of steep parts),
 // its micro-region and the nearest named peak. The day's bulletin and new snow decide what is suggested.
-const finder = Object.assign({ area: "allgaeu", steep: 90, asc: 99999, sort: "snow", avoid: true, l3: true, raw: false, shown: 20 },
+const finder = Object.assign({ area: "fav", steep: 90, asc: 99999, sort: "snow", avoid: true, l3: true, raw: false, shown: 20 },
   store.get("lawinenapp.finder.v1", {}));
 let routesPromise = null;
 function loadRoutes() {
@@ -2372,7 +2436,25 @@ async function fetchRouteSnow(feats, date) {
 }
 function finderAreaOk(region) {
   if (finder.area === "all") return true;
-  return regionArea(region) === finder.area;
+  if (finder.area === "fav") return state.favs.includes(regionArea(region));
+  return areaMatch(finder.area, region);
+}
+// Options for an area select: optionally "Meine Gebiete", the areas with their valleys indented, optionally "all".
+function areaOptions(withFav, allLabel) {
+  return [
+    withFav ? el("option", { value: "fav", text: "Meine Gebiete" }) : null,
+    allLabel ? el("option", { value: "all", text: allLabel }) : null,
+    el("optgroup", { label: "Meine Gebiete" }, AREAS.filter(a => state.favs.includes(a.key)).flatMap(a => [el("option", { value: a.key, text: a.name }),
+      ...(a.subs || []).map(s => el("option", { value: s.key, text: `  · ${s.name}` }))])),
+    el("optgroup", { label: "Weitere Gebiete" }, AREAS.filter(a => !state.favs.includes(a.key)).flatMap(a => [el("option", { value: a.key, text: a.name }),
+      ...(a.subs || []).map(s => el("option", { value: s.key, text: `  · ${s.name}` }))]))];
+}
+function finderFill() {
+  put($("#f-area"), areaOptions(true, "Alle Gebiete der Alpen"));
+  $("#f-area").value = finder.area;
+  if ($("#f-area").value !== finder.area) { finder.area = "fav"; $("#f-area").value = "fav"; }
+  put($("#m-region"), areaOptions(false, "Ganzer Bereich"));
+  $("#m-region").value = mapState.area || "all";
 }
 let finderToken = 0;
 async function renderFinder() {
@@ -2418,8 +2500,8 @@ async function renderFinder() {
     const sa = snowOf(a), sb = snowOf(b);
     return (rank[a.ev.status] - rank[b.ev.status]) || ((sb ? sb.past + sb.today : -1) - (sa ? sa.past + sa.today : -1));
   });
-  const areaName = finder.area === "all" ? "allen Gebieten" : (AREAS.find(a => a.key === finder.area) || {}).name;
-  const out = [`${rows.length} ${rows.length === 1 ? "Vorschlag" : "Vorschläge"} in ${areaName}`];
+  const areaLabel = finder.area === "all" ? "allen Gebieten der Alpen" : finder.area === "fav" ? "Meine Gebiete" : areaName(finder.area);
+  const out = [`${rows.length} ${rows.length === 1 ? "Vorschlag" : "Vorschläge"} in ${areaLabel}`];
   if (counts.stop) out.push(`${counts.stop} wegen Stufe 4 ausgeblendet`);
   if (counts.l3) out.push(`${counts.l3} in Stufe-3-Gebieten ausgeblendet`);
   if (counts.hits) out.push(`${counts.hits} führen durch Gefahrenstellen laut Bericht`);
@@ -2467,7 +2549,7 @@ function finderSummary() {
 }
 function initFinder() {
   const area = $("#f-area");
-  put(area, el("option", { value: "all", text: "Alle Gebiete" }), AREAS.map(a => el("option", { value: a.key, text: a.name })));
+  finderFill();
   const bind = (id, key, conv = v => v) => {
     const n = $(id);
     if (n.type === "checkbox") n.checked = !!finder[key]; else n.value = String(finder[key]);
@@ -2550,7 +2632,7 @@ function openRegionSheet(id) {
 }
 function openAreaSheet(key) {
   const a = AREAS.find(x => x.key === key), s = areaSummary(a);
-  if (s.items.length <= 1) { openRegionSheet(s.items.length ? s.items[0].id : (Array.isArray(a.regions) ? a.regions[0] : "")); return; }
+  if (s.items.length <= 1) { openRegionSheet(s.items.length ? s.items[0].id : ""); return; }
   const sorted = [...s.items].sort((x, y) => y.level - x.level || x.name.localeCompare(y.name, "de"));
   const holder = el("div");
   const show = id => { put(holder, regionContent(id)); if (lageMap.ready) lageMap.map.setFilter("sel", ["==", ["get", "id"], id]); };
@@ -2601,7 +2683,7 @@ function updateLageMap() { if (lageMap.ready && mapState.shapes) lageMap.map.get
 function selectArea(key) {
   const m = mapState.map; if (!m) return;
   if (key === "all") { leaveRegion(); return; }
-  const shapes = shapesFor(state.date).filter(f => regionArea(f.properties.id) === key);
+  const shapes = shapesFor(state.date).filter(f => areaMatch(key, f.properties.id));
   mapState.mode = "region"; mapState.region = null; mapState.area = key; mapState.areaIds = shapes.map(f => f.properties.id);
   if (shapes.length) {
     let w = 180, so = 90, e = -180, n = -90;
@@ -2756,7 +2838,7 @@ $("#sheet-bg").addEventListener("click", () => closeSheet());
 $("#btn-settings").addEventListener("click", () => openSheet("Einstellungen", $("#settings-src"), document.body));
 $("#m-layers").addEventListener("click", () => { renderMapPanel(); openSheet("Ebenen und Filter", $("#m-panel"), $("#page-karte")); });
 $("#m-title").addEventListener("click", () => mapState.region && openRegionSheet(mapState.region));
-put($("#m-region"), el("option", { value: "all", text: "Ganzer Bereich" }), AREAS.map(a => el("option", { value: a.key, text: a.name })));
+
 $("#m-region").addEventListener("change", e => selectArea(e.target.value));
 $("#m-legend").addEventListener("click", () => $("#m-legend").classList.toggle("mini"));
 $("#m-msg").addEventListener("click", () => { const z = Number($("#m-msg").dataset.zoom); if (z && mapState.map) mapState.map.easeTo({ zoom: z, duration: 600 }); });
