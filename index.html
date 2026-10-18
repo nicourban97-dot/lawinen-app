@@ -2208,6 +2208,41 @@ function initPeek() {
     else if (dy < -40 && mapState.peek) mapState.peek.onFull();
   }, { passive: true });
 }
+// ---------- tour weather: forecast at the summit and the seven days before ----------
+function wxPastDays(w, date) {
+  const D = w.daily, rows = [];
+  for (let k = 7; k >= 1; k--) {
+    const d = addDays(date, -k), i = D.time.indexOf(d);
+    if (i >= 0) rows.push({ d, sn: D.snowfall_sum[i], tmin: D.temperature_2m_min[i], tmax: D.temperature_2m_max[i], wind: D.wind_speed_10m_max[i], gust: D.wind_gusts_10m_max[i] });
+  }
+  if (!rows.length) return el("p", { class: "status", text: "Für die Tage davor gibt es keine Werte." });
+  const sum = rows.reduce((s, r) => s + (r.sn || 0), 0), v = (x, d = 0) => x == null ? "–" : num(x, d);
+  return el("div", { class: "wxpast" },
+    el("h3", { text: `Die 7 Tage davor: ${v(sum)} cm Neuschnee` }),
+    el("div", { class: "tablewrap" }, el("table", {},
+      el("thead", {}, el("tr", {}, ["Tag", "Neuschnee", "Temp. min / max", "Wind (Böen)"].map(h => el("th", { text: h })))),
+      el("tbody", {}, rows.map(r => el("tr", {},
+        el("td", { text: fmtDay(r.d) }), el("td", { text: `${v(r.sn)} cm` }),
+        el("td", { text: `${v(r.tmin)} / ${v(r.tmax)} °C` }), el("td", { text: `${v(r.wind)} (${v(r.gust)}) km/h` })))))),
+    el("p", { class: "status", text: `Modellwerte${w.elevation != null ? ` für ${Math.round(w.elevation)} m` : ""}, für die Einschätzung des Schneedeckenaufbaus.` }));
+}
+function openTourWeather(kind, item) {
+  const p = kind === "route" ? item.properties : null, st = p ? p.st || {} : null;
+  const t = p ? { id: "r:" + p.osm, name: routeName(p), lat: st.tlat, lon: st.tlon, top: st.top } : item;
+  const box = el("div", { style: "display:grid;gap:14px" });
+  openSheet(`Wetter: ${t.name}`, box, null, "tourwx");
+  if (t.lat == null || t.top == null) { put(box, el("p", { class: "status", text: "Für diese Tour ist kein Gipfelpunkt bekannt." })); return; }
+  const date = state.date;
+  put(box, el("p", { class: "status", text: "Lade das Wetter an der Tour …" }));
+  Promise.allSettled([forecastFor({ lat: t.lat, lon: t.lon, elev: t.top }, date), tourWeather(t, date)]).then(([fc, past]) => {
+    if (!box.isConnected || date !== state.date) return;
+    if (fc.status !== "fulfilled" && past.status !== "fulfilled") { put(box, el("p", { class: "status", text: "Wetter gerade nicht abrufbar." })); return; }
+    put(box,
+      el("p", { class: "status", text: `Gipfelpunkt auf ${t.top} m.` }),
+      fc.status === "fulfilled" ? forecastView(fc.value, date, { label: `${t.name}, ${t.top} m` }) : el("p", { class: "status", text: "Vorhersage gerade nicht abrufbar." }),
+      past.status === "fulfilled" ? wxPastDays(past.value, date) : el("p", { class: "status", text: "Rückblick gerade nicht abrufbar." }));
+  });
+}
 function openBulletinFor(regionId) {
   if (regionId) { openRegionSheet(regionId); return; }
   openSheet("Lagebericht", el("p", { class: "status", text: "Für diese Tour ist keine Lawinenregion bekannt." }));
@@ -2260,6 +2295,7 @@ function routePanel() {
             e.target.replaceWith(el("span", { class: "status", text: `Als Tour „${t.name}“ gespeichert. Bitte Name und Angaben prüfen.` }));
           }, text: "Als Tour speichern" }),
       lageButton(pseudo.region, "Lagebericht", "btn ghost"),
+      el("button", { class: "btn ghost", type: "button", onclick: () => openTourWeather("route", feature), text: "Wetter" }),
       el("a", { class: "btn ghost", href: avLink(p), target: "_blank", rel: "noopener", text: "Bei alpenvereinaktiv ansehen" }),
       el("a", { class: "btn ghost", href: `https://www.openstreetmap.org/${p.osm}`, target: "_blank", rel: "noopener", text: "In OpenStreetMap" })));
 }
@@ -2723,7 +2759,8 @@ async function selectTourLine(id) {
       tr === undefined ? el("p", { class: "status", text: "Berechne Gefahrenabschnitte …" }) : riskBlock(tr, near),
       info ? profileSvg(info.profile, tr) : null,
       el("div", { class: "row" }, el("button", { class: "btn", type: "button", onclick: () => showTour(t.id), text: "Tour im Detail" }),
-        lageButton(t.region, "Lagebericht", "btn ghost"))));
+        lageButton(t.region, "Lagebericht", "btn ghost"),
+        el("button", { class: "btn ghost", type: "button", onclick: () => openTourWeather("tour", t), text: "Wetter" }))));
   };
   const { info, tr } = await riskOf(tourKey(t), g).catch(() => ({ info: null, tr: null }));
   if (mapState.tourSelId !== id) return;
