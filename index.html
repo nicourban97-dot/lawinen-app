@@ -109,6 +109,7 @@ details > summary { cursor: pointer; color: var(--accent); font-weight: 700; }
 .place { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: #13283a; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 2px #fff; pointer-events: none; }
 .place span { width: 5px; height: 5px; border-radius: 50%; background: #13283a; box-shadow: 0 0 0 1.5px #fff; }
 .lage-hint { position: absolute; left: 10px; top: 10px; z-index: 2; background: color-mix(in srgb, var(--surface) 90%, transparent); color: var(--fg); font-size: 14px; padding: 4px 10px; border-radius: 99px; pointer-events: none; }
+.lage-reset { position: absolute; right: 10px; top: 10px; z-index: 2; border: 0; border-radius: 99px; padding: 5px 11px; font-size: 13px; font-weight: 700; background: color-mix(in srgb, var(--surface) 92%, transparent); color: var(--fg); cursor: pointer; box-shadow: var(--shadow); }
 .scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
 .scale div { display: grid; gap: 2px; justify-items: center; font-size: 12px; color: var(--muted); }
 .scale span { width: 100%; height: 8px; border-radius: 4px; }
@@ -120,7 +121,10 @@ details > summary { cursor: pointer; color: var(--accent); font-weight: 700; }
 .area-row .nm { font: 700 21px/1.1 var(--font-display); }
 .area-row .sub { color: var(--muted); font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .area-row .chev { color: var(--muted); font-size: 22px; }
-.area-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 6px; align-items: stretch; } border: 1px solid var(--powder-line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 8px; }
+.area-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 6px; align-items: stretch; }
+.star { border: 0; border-radius: 14px; background: var(--surface); color: var(--accent); font-size: 22px; cursor: pointer; box-shadow: var(--shadow); }
+#areas > h2 { margin-top: 2px; }
+.powder { background: var(--powder); border: 1px solid var(--powder-line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 8px; }
 .powder .area { display: grid; gap: 6px; }
 
 /* Region sheet / bulletin */
@@ -319,6 +323,7 @@ img.chart { width: 100%; height: auto; display: block; border-radius: 8px; backg
         <div class="lage-map-wrap">
           <div id="lage-map" role="img" aria-label="Karte der Gefahrenstufen. Tippe auf ein Gebiet für den Lagebericht."></div>
           <div class="lage-hint">Tippe auf ein Gebiet</div>
+          <button type="button" class="lage-reset" id="lage-reset" aria-label="Karte auf Meine Gebiete zurücksetzen">Gesamtansicht</button>
         </div>
         <div class="scale" aria-hidden="true">
           <div><span style="background:var(--l1)"></span>1 gering</div><div><span style="background:var(--l2)"></span>2 mäßig</div>
@@ -1024,6 +1029,7 @@ function bulletinDetail(regionId) {
       b.unscheduled ? el("span", { class: "badge warn", text: "Aktualisierte Fassung" }) : null,
       r.stale ? el("span", { class: "badge", text: `Bericht vom ${fmtDate(r.file)}` }) : null),
     r.lang === "fr" ? el("div", { class: "note", text: "Lagebericht nur auf Französisch, so wie ihn der Warndienst veröffentlicht." }) : null,
+    sec("Gefahrenstufe", rates),
     (b.highlights || b.avalancheActivity?.highlights) ? sec("Auf einen Blick", textBlock(b.highlights, "lead"), b.highlights !== b.avalancheActivity?.highlights ? textBlock(b.avalancheActivity?.highlights, "lead") : null) : null,
     probs.length ? sec("Lawinenprobleme", probs) : null,
     sec("Gefahrenbeurteilung", textBlock(b.avalancheActivity?.comment)),
@@ -2020,7 +2026,7 @@ function initMap() {
   });
   const map = new maplibregl.Map({
     container: "map", attributionControl: { compact: true }, maxPitch: 75,
-    bounds: [[9.6, 46.75], [12.95, 47.75]], fitBoundsOptions: { padding: 10 },
+    bounds: favBounds(), fitBoundsOptions: { padding: 10 },
     style: {
       version: 8,
       sources: {
@@ -2213,7 +2219,7 @@ function leaveRegion() {
   const m = mapState.map; if (!m) return;
   mapState.mode = "overview"; mapState.region = null; mapState.area = null; mapState.areaIds = null;
   $("#m-region").value = "all";
-  m.fitBounds([[9.6, 46.75], [12.95, 47.75]], { padding: 10 });
+  m.fitBounds(favBounds(), { padding: 10 });
   applyMode();
 }
 function set3D(on) {
@@ -2642,14 +2648,27 @@ function openAreaSheet(key) {
     holder));
   show(sorted[0].id);
 }
-const LAGE_BOUNDS = [[9.8, 46.75], [12.9, 47.75]];
+const ALPS_BOUNDS = [[5, 43.7], [16.5, 48.4]];
+// The extent of "Meine Gebiete": from the region outlines once loaded, before that from the areas' touring spots.
+function favBounds() {
+  const favs = AREAS.filter(a => state.favs.includes(a.key));
+  if (!favs.length) return ALPS_BOUNDS;
+  let w = 180, s = 90, e = -180, n = -90;
+  const add = ([[a, b], [c, d]]) => { w = Math.min(w, a); s = Math.min(s, b); e = Math.max(e, c); n = Math.max(n, d); };
+  const shapes = shapesFor(state.date).filter(f => favs.some(a => areaMatch(a.key, f.properties.id)));
+  if (shapes.length) shapes.forEach(f => add(shapeBox(f)));
+  else favs.forEach(a => a.points.forEach(p => add([[p.lon - 0.4, p.lat - 0.3], [p.lon + 0.4, p.lat + 0.3]])));
+  return [[w, s], [e, n]];
+}
 const lageMap = { map: null, ready: false };
 function initLageMap() {
   if (!window.maplibregl) { put($("#lage-map"), el("p", { class: "status", style: "padding:16px", text: "Die Karte konnte nicht geladen werden. Bitte die Internetverbindung prüfen." })); return; }
+  // Zoom and pan with the fingers inside the map; no rotation or tilt, the page scrolls outside the map.
   const m = new maplibregl.Map({
     container: "lage-map", attributionControl: { compact: true },
-    dragPan: false, scrollZoom: false, boxZoom: false, dragRotate: false, keyboard: false, doubleClickZoom: false, touchZoomRotate: false, touchPitch: false, pitchWithRotate: false,
-    bounds: LAGE_BOUNDS, fitBoundsOptions: { padding: 6 },
+    dragRotate: false, touchPitch: false, pitchWithRotate: false, boxZoom: false, keyboard: false,
+    minZoom: 5, maxZoom: 11, maxBounds: [[3, 42.5], [18, 49.5]], renderWorldCopies: false,
+    bounds: favBounds(), fitBoundsOptions: { padding: 6 },
     style: { version: 8,
       sources: {
         hill: { type: "raster-dem", tiles: [DEM_URL], encoding: "terrarium", tileSize: 256, maxzoom: 10, attribution: "Gelände: Terrain Tiles (AWS Open Data) · Gebiete: EAWS" },
@@ -2672,13 +2691,17 @@ function initLageMap() {
   };
   m.once("style.load", onStyle); m.once("load", onStyle);
   // A few places for orientation, as plain labels (the map has no text layer).
-  for (const [name, lon, lat] of [["Oberstdorf", 10.28, 47.41], ["Garmisch", 11.10, 47.49], ["Innsbruck", 11.39, 47.27], ["Landeck", 10.57, 47.14], ["Kitzbühel", 12.39, 47.45], ["Bludenz", 9.82, 47.15]])
+  for (const [name, lon, lat] of [["Oberstdorf", 10.28, 47.41], ["Garmisch", 11.10, 47.49], ["Innsbruck", 11.39, 47.27], ["Landeck", 10.57, 47.14], ["Kitzbühel", 12.39, 47.45], ["Bludenz", 9.82, 47.15],
+    ["Salzburg", 13.04, 47.80], ["Bozen", 11.35, 46.50], ["Cortina", 12.14, 46.54], ["Davos", 9.84, 46.80], ["Zermatt", 7.75, 46.02], ["Chamonix", 6.87, 45.92], ["Grenoble", 5.72, 45.19], ["Klagenfurt", 14.31, 46.62]])
     new maplibregl.Marker({ element: el("div", { class: "place", "aria-hidden": "true" }, el("span"), name), anchor: "left" }).setLngLat([lon, lat]).addTo(m);
   m.on("click", e => { const f = m.queryRenderedFeatures(e.point, { layers: ["fill"] })[0]; if (f) openRegionSheet(f.properties.id); });
   m.on("mousemove", e => { m.getCanvas().style.cursor = m.queryRenderedFeatures(e.point, { layers: ["fill"] }).length ? "pointer" : ""; });
-  if (window.ResizeObserver) new ResizeObserver(() => { m.resize(); m.fitBounds(LAGE_BOUNDS, { padding: 6, duration: 0 }); }).observe($("#lage-map"));
+  // Fit once when the box first gets its size; later resizes keep what the user zoomed to.
+  let fitted = false;
+  if (window.ResizeObserver) new ResizeObserver(() => { m.resize(); if (!fitted && $("#lage-map").clientWidth) { fitted = true; m.fitBounds(favBounds(), { padding: 6, duration: 0 }); } }).observe($("#lage-map"));
   lageMap.map = m;
 }
+function lageReset() { if (lageMap.map) lageMap.map.fitBounds(favBounds(), { padding: 6, duration: 500 }); }
 function updateLageMap() { if (lageMap.ready && mapState.shapes) lageMap.map.getSource("danger").setData(dangerGeoJSON()); }
 function selectArea(key) {
   const m = mapState.map; if (!m) return;
@@ -2840,6 +2863,7 @@ $("#m-layers").addEventListener("click", () => { renderMapPanel(); openSheet("Eb
 $("#m-title").addEventListener("click", () => mapState.region && openRegionSheet(mapState.region));
 
 $("#m-region").addEventListener("change", e => selectArea(e.target.value));
+$("#lage-reset").addEventListener("click", lageReset);
 $("#m-legend").addEventListener("click", () => $("#m-legend").classList.toggle("mini"));
 $("#m-msg").addEventListener("click", () => { const z = Number($("#m-msg").dataset.zoom); if (z && mapState.map) mapState.map.easeTo({ zoom: z, duration: 600 }); });
 // One short explanation the first time the map opens.
