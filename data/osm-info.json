@@ -1,7 +1,7 @@
 {
- "generated": "2026-10-18T17:30:57.335Z",
- "routes": 1659,
- "zones": 810,
+ "generated": "2026-10-26T03:41:13.321Z",
+ "routes": 1658,
+ "zones": 819,
  "zoneNames": [
   [
    "Zone de protection du biotope du plateau de Loëx",
@@ -634,7 +634,7 @@
    null
   ],
   [
-   "Teufelstättkopf",
+   "Schartenköpfel",
    "Schongebiet",
    "14",
    "winter",
@@ -711,13 +711,6 @@
    "discouraged @ (Dec 15-Apr 30)"
   ],
   [
-   "Wald-Wild-Schongebiet Hennenalpe",
-   "Schongebiet",
-   "14",
-   "winter",
-   "discouraged @ (Dec 15-Apr 30)"
-  ],
-  [
    "Wald-Wild-Schongebiet Lüchlealpe West",
    "Schongebiet",
    "14",
@@ -760,7 +753,7 @@
    "discouraged @ (Dec 15-Apr 30)"
   ],
   [
-   "Wald-Wild-Schongebiet Kuhgehren",
+   "Wildental",
    "Schongebiet",
    "14",
    "winter",
@@ -1402,12 +1395,19 @@
    "14",
    "winter",
    null
+  ],
+  [
+   "Wald-Wild-Schongebiet Mitteleck",
+   "Schongebiet",
+   "14",
+   "winter",
+   null
   ]
  ],
  "protectedAreaTypes": [
   [
    "- | -",
-   1502
+   1513
   ],
   [
    "4 | Naturschutzgebiet",
@@ -1419,7 +1419,7 @@
   ],
   [
    "4 | Schutzzone nach Empfehlung \"Bergwelt Tirol - Miteinander erleben\"",
-   257
+   271
   ],
   [
    "4 | Biotop",
@@ -1622,6 +1622,10 @@
    10
   ],
   [
+   "4 | Geschützter Landschaftsteil",
+   10
+  ],
+  [
    "6 | Naturpark",
    10
   ],
@@ -1639,10 +1643,6 @@
   ],
   [
    "14 | Gebietsverbot und Wegegebot",
-   9
-  ],
-  [
-   "4 | Geschützter Landschaftsteil",
    9
   ],
   [
@@ -1714,16 +1714,16 @@
    5
   ],
   [
-   "4 | Schutzzone nach Empfehlung \"Bergwelt Tirol - Miteinander Erleben\"",
-   5
-  ],
-  [
    "- | water_protection_area",
    5
   ],
   [
    "97 | Europa-Vogelschutzgebiet und Fauna Flora Habitat",
    5
+  ],
+  [
+   "4 | Réserve Naturelle",
+   4
   ]
  ]
 }

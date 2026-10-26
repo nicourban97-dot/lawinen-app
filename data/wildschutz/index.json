@@ -1,5 +1,5 @@
 {
- "generated": "2026-10-18T17:30:57.335Z",
+ "generated": "2026-10-26T03:41:13.321Z",
  "source": "OpenStreetMap-Mitwirkende (ODbL)",
  "parts": [
   {
@@ -24,15 +24,15 @@
    "s": 46.52329,
    "e": 10.9971,
    "n": 48.31554,
-   "count": 226
+   "count": 225
   },
   {
    "file": "wildschutz-3.geojson",
-   "w": 10.98949,
+   "w": 10.99491,
    "s": 46.66829,
    "e": 13.00191,
    "n": 48.22788,
-   "count": 547
+   "count": 557
   },
   {
    "file": "wildschutz-4.geojson",
