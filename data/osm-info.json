@@ -1,5 +1,5 @@
 {
- "generated": "2026-10-26T03:41:13.321Z",
+ "generated": "2026-11-02T03:58:47.943Z",
  "routes": 1658,
  "zones": 819,
  "zoneNames": [
@@ -1411,7 +1411,7 @@
   ],
   [
    "4 | Naturschutzgebiet",
-   922
+   928
   ],
   [
    "14 | Schongebiet",
@@ -1431,7 +1431,7 @@
   ],
   [
    "5 | Landschaftsschutzgebiet",
-   158
+   163
   ],
   [
    "5 | -",
@@ -1455,7 +1455,7 @@
   ],
   [
    "5 | Geschützter Landschaftsteil",
-   84
+   83
   ],
   [
    "12 | -",
@@ -1510,12 +1510,12 @@
    34
   ],
   [
-   "2 | -",
+   "3 | Naturdenkmal",
    32
   ],
   [
-   "3 | Naturdenkmal",
-   32
+   "2 | -",
+   31
   ],
   [
    "1 | National Forest",
@@ -1538,6 +1538,10 @@
    25
   ],
   [
+   "5 | Naturpark",
+   23
+  ],
+  [
    "97 | Fauna Flora Habitat",
    23
   ],
@@ -1558,7 +1562,7 @@
    19
   ],
   [
-   "5 | Naturpark",
+   "4 | Geschützter Landschaftsteil",
    17
   ],
   [
@@ -1619,10 +1623,6 @@
   ],
   [
    "- | Naturdenkmal",
-   10
-  ],
-  [
-   "4 | Geschützter Landschaftsteil",
    10
   ],
   [
