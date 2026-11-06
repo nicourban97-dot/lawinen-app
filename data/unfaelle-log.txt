@@ -1,3 +1,3 @@
-2026-11-05T05:40:05.576Z LAWIS: 4452 Ereignisse, im Gebiet 4308
-2026-11-05T05:40:05.577Z Details neu zu laden: 0
-2026-11-05T05:40:05.601Z Geschrieben: 4308 Ereignisse, Details geladen 0, fehlgeschlagen 0
+2026-11-06T05:39:07.176Z LAWIS: 4452 Ereignisse, im Gebiet 4308
+2026-11-06T05:39:07.178Z Details neu zu laden: 0
+2026-11-06T05:39:07.193Z Geschrieben: 4308 Ereignisse, Details geladen 0, fehlgeschlagen 0
