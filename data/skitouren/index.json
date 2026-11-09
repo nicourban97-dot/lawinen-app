@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-02T03:58:47.943Z",
+ "generated": "2026-11-09T03:59:17.094Z",
  "source": "OpenStreetMap-Mitwirkende (ODbL)",
  "parts": [
   {
@@ -8,7 +8,7 @@
    "s": 44.21621,
    "e": 7.01455,
    "n": 47.02162,
-   "count": 284
+   "count": 286
   },
   {
    "file": "skitouren-1.geojson",
@@ -24,7 +24,7 @@
    "s": 44.11204,
    "e": 11.02664,
    "n": 48.07687,
-   "count": 416
+   "count": 425
   },
   {
    "file": "skitouren-3.geojson",
@@ -32,7 +32,7 @@
    "s": 45.67319,
    "e": 13.05859,
    "n": 47.79114,
-   "count": 328
+   "count": 334
   },
   {
    "file": "skitouren-4.geojson",

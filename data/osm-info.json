@@ -1,6 +1,6 @@
 {
- "generated": "2026-11-02T03:58:47.943Z",
- "routes": 1658,
+ "generated": "2026-11-09T03:59:17.094Z",
+ "routes": 1675,
  "zones": 819,
  "zoneNames": [
   [
@@ -1407,11 +1407,11 @@
  "protectedAreaTypes": [
   [
    "- | -",
-   1513
+   1486
   ],
   [
    "4 | Naturschutzgebiet",
-   928
+   1020
   ],
   [
    "14 | Schongebiet",
@@ -1427,11 +1427,11 @@
   ],
   [
    "4 | -",
-   191
+   190
   ],
   [
    "5 | Landschaftsschutzgebiet",
-   163
+   165
   ],
   [
    "5 | -",
@@ -1466,15 +1466,15 @@
    73
   ],
   [
+   "3 | Geschützter Landschaftsteil",
+   71
+  ],
+  [
    "2 | Area Protetta Regionale",
    70
   ],
   [
    "7 | -",
-   66
-  ],
-  [
-   "3 | Geschützter Landschaftsteil",
    66
   ],
   [
@@ -1539,7 +1539,7 @@
   ],
   [
    "5 | Naturpark",
-   23
+   24
   ],
   [
    "97 | Fauna Flora Habitat",
@@ -1658,6 +1658,10 @@
    7
   ],
   [
+   "12 | Wasserschutzgebiet",
+   7
+  ],
+  [
    "97 | Europa-Fauna Flora Habitat Gebiet",
    7
   ],
@@ -1694,10 +1698,6 @@
    5
   ],
   [
-   "12 | Wasserschutzgebiet",
-   5
-  ],
-  [
    "5 | geschützter Landschaftsteil",
    5
   ],
@@ -1718,12 +1718,12 @@
    5
   ],
   [
-   "97 | Europa-Vogelschutzgebiet und Fauna Flora Habitat",
+   "97 | Europaschutzgebiet",
    5
   ],
   [
-   "4 | Réserve Naturelle",
-   4
+   "97 | Europa-Vogelschutzgebiet und Fauna Flora Habitat",
+   5
   ]
  ]
 }
