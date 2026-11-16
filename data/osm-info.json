@@ -1,6 +1,6 @@
 {
- "generated": "2026-11-09T03:59:17.094Z",
- "routes": 1675,
+ "generated": "2026-11-16T04:19:40.130Z",
+ "routes": 1667,
  "zones": 819,
  "zoneNames": [
   [
@@ -1407,11 +1407,11 @@
  "protectedAreaTypes": [
   [
    "- | -",
-   1486
+   1485
   ],
   [
    "4 | Naturschutzgebiet",
-   1020
+   1046
   ],
   [
    "14 | Schongebiet",
@@ -1427,15 +1427,15 @@
   ],
   [
    "4 | -",
-   190
+   189
   ],
   [
    "5 | Landschaftsschutzgebiet",
-   165
+   172
   ],
   [
    "5 | -",
-   142
+   144
   ],
   [
    "14 | Gebietsverbot",
@@ -1658,6 +1658,10 @@
    7
   ],
   [
+   "7 | Geschützter Landschaftsbestandteil",
+   7
+  ],
+  [
    "12 | Wasserschutzgebiet",
    7
   ],
@@ -1675,10 +1679,6 @@
   ],
   [
    "3 | Monumento naturale",
-   6
-  ],
-  [
-   "7 | Geschützter Landschaftsbestandteil",
    6
   ],
   [
